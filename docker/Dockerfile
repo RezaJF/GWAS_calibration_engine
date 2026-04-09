@@ -1,5 +1,5 @@
 # Build from the long_gwas repository root so the calibration utils are copied unchanged:
-#   docker build -f Github_clones/gwas-calibration-qc-wdl/docker/Dockerfile \
+#   docker build -f Github_clones/GWAS_calibration_engine/docker/Dockerfile \
 #     -t YOUR_REGISTRY/gwas-calibration-qc:v1 \
 #     /path/to/long_gwas
 #
@@ -14,7 +14,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY Github_clones/gwas-calibration-qc-wdl/requirements.txt /tmp/calibration_wdl_requirements.txt
+COPY Github_clones/GWAS_calibration_engine/requirements.txt /tmp/calibration_wdl_requirements.txt
 RUN pip install --no-cache-dir -r /tmp/calibration_wdl_requirements.txt
 
 COPY Python_scripts/gwas_calibration_utils /opt/gwas_calibration_utils

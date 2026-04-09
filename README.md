@@ -138,11 +138,13 @@ flowchart TB
 ## Repository layout
 
 ```
-gwas-calibration-qc-wdl/
+GWAS_calibration_engine/
 ├── LICENSE
 ├── docker/
 │   └── Dockerfile
 ├── scripts/
+│   ├── generate_path_lists.py
+│   └── harvest_calibration_outputs.py
 ├── wdl/
 │   ├── gwas_calibration_qc.wdl
 │   └── gwas_calibration_qc.example.json
@@ -211,8 +213,10 @@ With **`diagnostic_plots: true`**, expect additional plot directories inside the
 
 The **Dockerfile** expects a **build context** that contains **both**:
 
-- this **`gwas-calibration-qc-wdl`** tree (for workflow-specific requirements), and  
+- this **`GWAS_calibration_engine`** tree (for workflow-specific requirements), and
 - the **gwas-calibration-utils** source tree (sibling path **`Python_scripts/gwas_calibration_utils`** in the upstream layout).
+
+### Option A — Local Docker
 
 From that shared parent directory (call it **`REPO_ROOT`**):
 
@@ -221,35 +225,87 @@ cd REPO_ROOT
 
 docker build \
   --progress=plain \
-  -f Github_clones/gwas-calibration-qc-wdl/docker/Dockerfile \
+  -f Github_clones/GWAS_calibration_engine/docker/Dockerfile \
   -t LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
   .
 ```
 
+Then push:
 
-| Symptom                             | Likely cause                                                                |
-| ----------------------------------- | --------------------------------------------------------------------------- |
-| `COPY` fails for `Python_scripts/…` | Build context is not the parent that contains both trees.                   |
-| Image pull fails on Cromwell        | Worker service account lacks registry read permission, or URI/tag mismatch. |
+```bash
+gcloud auth configure-docker LOCATION-docker.pkg.dev
+docker push LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
+```
 
+### Option B — Cloud Build (no local Docker)
+
+When Docker is **not installed** on your machine (common on shared compute VMs), use **Google Cloud Build** to build and push the image remotely. The challenge is that the **`REPO_ROOT`** may be very large (hundreds of GiB of sumstats, analysis outputs, etc.), and `gcloud builds submit` tars the **entire** source directory before uploading — making it impractical to point at the monorepo root.
+
+**Solution — lightweight staging context:** Create a small temporary directory that mirrors **only** the two `COPY` source paths the Dockerfile needs, add a `cloudbuild.yaml`, and submit that. Total upload is typically under **1 MiB**.
+
+```bash
+STAGE=$(mktemp -d)
+
+# Mirror only the paths referenced in the Dockerfile
+mkdir -p "$STAGE/Github_clones/GWAS_calibration_engine/docker" \
+         "$STAGE/Python_scripts"
+
+cp REPO_ROOT/Github_clones/GWAS_calibration_engine/docker/Dockerfile \
+   "$STAGE/Github_clones/GWAS_calibration_engine/docker/"
+cp REPO_ROOT/Github_clones/GWAS_calibration_engine/requirements.txt \
+   "$STAGE/Github_clones/GWAS_calibration_engine/"
+cp -r REPO_ROOT/Python_scripts/gwas_calibration_utils \
+   "$STAGE/Python_scripts/"
+
+# Write a minimal Cloud Build config
+cat > "$STAGE/cloudbuild.yaml" <<'YAML'
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'Github_clones/GWAS_calibration_engine/docker/Dockerfile'
+      - '-t'
+      - 'LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG'
+      - '.'
+images:
+  - 'LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG'
+YAML
+
+# Submit — use a region-located staging bucket if your org policy restricts resources
+gcloud builds submit "$STAGE" \
+  --config "$STAGE/cloudbuild.yaml" \
+  --project PROJECT \
+  --region LOCATION \
+  --gcs-source-staging-dir gs://YOUR_BUCKET/tmp/cloud_build_staging \
+  --timeout=1200
+
+# Clean up
+rm -rf "$STAGE"
+```
+
+Replace **`LOCATION`**, **`PROJECT`**, **`REGISTRY`**, **`TAG`**, and **`YOUR_BUCKET`** with your values. The staging tarball is automatically removed from Cloud Build's source bucket after the build; you may also delete the `gs://` staging prefix manually.
+
+**Why this works:** The Dockerfile's two `COPY` instructions reference **relative** paths (`Github_clones/GWAS_calibration_engine/requirements.txt` and `Python_scripts/gwas_calibration_utils`). By reconstructing **only** those subtrees in a temporary directory, we replicate the layout the Dockerfile expects without touching the hundreds of gigabytes of unrelated data in the monorepo.
+
+### Troubleshooting
+
+| Symptom | Likely cause |
+|---------|-------------|
+| `COPY` fails for `Python_scripts/…` | Build context does not mirror the Dockerfile's expected tree layout. |
+| `HTTPError 412: 'us' violates constraint` | Org policy restricts resource locations. Pass **`--region`** and **`--gcs-source-staging-dir`** pointing to a bucket in the allowed region. |
+| Image pull fails on Cromwell | Worker service account lacks Artifact Registry read permission, or URI/tag mismatch. |
 
 ### Smoke test
 
-After install, the image exposes the **`gwas-calibration-qc`** console entry point:
+After build, the image exposes the **`gwas-calibration-qc`** console entry point:
 
 ```bash
 docker run --rm LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
   gwas-calibration-qc --help
 ```
 
-Exit code **0** confirms the environment is wired correctly.
-
-### Publishing to Artifact Registry (GCP)
-
-```bash
-gcloud auth configure-docker LOCATION-docker.pkg.dev
-docker push LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
-```
+Exit code **0** confirms the environment is wired correctly. If Docker is not available locally, verify via Cloud Build logs or by pulling the image on a different machine.
 
 Use the **same** URI (including tag) as **`gwas_calibration_qc.docker`** in your Cromwell inputs.
 

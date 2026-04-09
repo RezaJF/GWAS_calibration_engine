@@ -103,10 +103,6 @@ task run_calibration_one_setup {
   Int disk_pad_gb = 20
   Int disk_gb = ceil(size(files_a, "GB") + disk_pad_gb)
 
-  String cis_flag = if defined(cis_json) then "--cis-json " + cis_json else ""
-  String diag_flag = if diagnostic_plots then "--diagnostic-plots" else ""
-  String lead_flag = if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"
-
   command <<<
     set -euo pipefail
 
@@ -114,13 +110,13 @@ task run_calibration_one_setup {
 
     python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
       --file-list ~{write_lines(files_a)} \
-      ~{lead_flag} \
-      ~{cis_flag} \
+      ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
+      ~{"--cis-json " + cis_json} \
       --setup-labels "~{setup_label_a}" "_unused" \
       --protein-id-mode ~{protein_id_mode} \
       --outdir results \
       --n-jobs ~{n_jobs} \
-      ~{diag_flag} \
+      ~{if diagnostic_plots then "--diagnostic-plots" else ""} \
       --top-n-trans ~{top_n_trans} \
       --probability-rho ~{probability_rho}
 
@@ -172,10 +168,6 @@ task run_calibration_two_setups {
   Int disk_pad_gb = 20
   Int disk_gb = ceil(size(files_a, "GB") + size(files_b, "GB") + disk_pad_gb)
 
-  String cis_flag = if defined(cis_json) then "--cis-json " + cis_json else ""
-  String diag_flag = if diagnostic_plots then "--diagnostic-plots" else ""
-  String lead_flag = if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"
-
   command <<<
     set -euo pipefail
 
@@ -184,13 +176,13 @@ task run_calibration_two_setups {
     python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
       --file-list ~{write_lines(files_a)} \
       --file-list ~{write_lines(files_b)} \
-      ~{lead_flag} \
-      ~{cis_flag} \
+      ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
+      ~{"--cis-json " + cis_json} \
       --setup-labels "~{setup_label_a}" "~{setup_label_b}" \
       --protein-id-mode ~{protein_id_mode} \
       --outdir results \
       --n-jobs ~{n_jobs} \
-      ~{diag_flag} \
+      ~{if diagnostic_plots then "--diagnostic-plots" else ""} \
       --top-n-trans ~{top_n_trans} \
       --probability-rho ~{probability_rho}
 
