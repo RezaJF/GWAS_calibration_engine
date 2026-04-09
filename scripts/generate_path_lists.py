@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Reza Jabal; PhD; rjabal@broadinstitute.org
 """
 Build paths_setup_a.txt and paths_setup_b.txt for gwas_calibration_qc.wdl.
 

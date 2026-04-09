@@ -37,13 +37,15 @@ After **removing cis and lead-adjacent variants**, the remaining SNPs are treate
 
 All metrics below are computed on the **masked** SNP table for each trait (same chromosome/position conventions as the input files).
 
-| Family | Construction | Null reference |
-|--------|----------------|-----------------|
-| **Genomic control λ<sub>GC</sub>** | Let $X_i$ be $\chi^2(1)$ transforms of *p*-values. $\lambda_{\mathrm{GC}} = \mathrm{median}_i(X_i) / \mathrm{median}(\chi^2(1))$. The median of $\chi^2(1)$ is ≈ **0.4549**. | $\lambda_{\mathrm{GC}} \approx 1$ |
-| **Quantile λ** | For quantile *q*, ratio of the empirical quantile of $\{X_i\}$ to the theoretical $\chi^2(1)$ quantile at *q* (e.g. *q* ∈ {0.5, 0.9, 0.99, 0.999}). | ≈ 1 at each *q* |
-| **Tail excess (K/E)** | At threshold α, **K** = count of SNPs with *p* ≤ α; **E** = *m*α for *m* SNPs. Report **K/E** for several α (e.g. 10⁻⁴ … 10⁻⁷). | **K/E** ≈ 1 |
-| **Goodness-of-fit** | Histogram test of *p* against Uniform(0, 1) on a fixed bin grid (including a fine bin near 0). Yields a $\chi^2$ statistic and *p*-value for global departure from uniformity. | Non-small GOF *p* |
-| **Rare vs common** | Same K/E-style tail ratio restricted to **rare** vs **common** SNPs (using allele-frequency column). | Similar ratios; large gaps suggest frequency-specific artefacts |
+
+| Family                  | Construction                                                                                                                                                                   | Null reference                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| **Genomic control λGC** | Let $X_i$ be $\chi^2(1)$ transforms of *p*-values. $\lambda_{\mathrm{GC}} = \mathrm{median}_i(X_i) / \mathrm{median}(\chi^2(1))$. The median of $\chi^2(1)$ is ≈ **0.4549**.   | $\lambda_{\mathrm{GC}} \approx 1$                               |
+| **Quantile λ**          | For quantile *q*, ratio of the empirical quantile of $X_i$ to the theoretical $\chi^2(1)$ quantile at *q* (e.g. *q* ∈ {0.5, 0.9, 0.99, 0.999}).                                | ≈ 1 at each *q*                                                 |
+| **Tail excess (K/E)**   | At threshold α, **K** = count of SNPs with *p* ≤ α; **E** = *m*α for *m* SNPs. Report **K/E** for several α (e.g. 10⁻⁴ … 10⁻⁷).                                                | **K/E** ≈ 1                                                     |
+| **Goodness-of-fit**     | Histogram test of *p* against Uniform(0, 1) on a fixed bin grid (including a fine bin near 0). Yields a $\chi^2$ statistic and *p*-value for global departure from uniformity. | Non-small GOF *p*                                               |
+| **Rare vs common**      | Same K/E-style tail ratio restricted to **rare** vs **common** SNPs (using allele-frequency column).                                                                           | Similar ratios; large gaps suggest frequency-specific artefacts |
+
 
 **Composite calibration score** (per trait, **lower is better**): a **weighted sum of penalties** measuring distance from the null for tail quantile λ, median λ, tail excess, rare–common discrepancy, and a **capped, down-weighted** GOF term so that tail behaviour drives the score. **Robust *z*-scores** of that composite are formed **within each workflow run** (median and MAD), then mapped to a **run-relative** “quality probability” via a logistic transform; this is a **ranking aid within the batch**, not a calibrated Bayesian posterior.
 
@@ -123,7 +125,9 @@ flowchart TB
   TGZ --> GCS
 ```
 
-**Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
+
+
+**Lead variants:** If the workflow input `**lead_variants_json`** is **omitted**, the task passes an output path under `**results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask. Supply `**lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
 
 **Cis regions:** Optional JSON defines per-trait intervals and/or explicit positions to exclude before metrics.
 
@@ -143,48 +147,46 @@ gwas-calibration-qc-wdl/
 └── README.md
 ```
 
-Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see **`.gitignore`**). Build path lists with **`scripts/generate_path_lists.py`** and start from **`wdl/gwas_calibration_qc.example.json`**.
+Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see `**.gitignore`**). Build path lists with `**scripts/generate_path_lists.py**` and start from `**wdl/gwas_calibration_qc.example.json**`.
 
 ---
 
 ## Workflow inputs (summary)
 
-| Input | Type | Description |
-|-------|------|-------------|
-| `paths_setup_a` | `File` | Text file: one `gs://` URI per line (sumstats per trait). |
-| `two_setups` | `Boolean` | `true` = compare two setups; `false` = single batch. |
-| `paths_setup_b` | `File?` | Second path list; required when `two_setups` is `true`. |
-| `lead_variants_json` | `File?` | Optional fixed lead file. Omit to auto-generate under `results/` on the worker. |
-| `cis_json` | `File?` | Optional cis masking specification. |
-| `setup_label_a`, `setup_label_b` | `String` | Human-readable setup names (second label unused when `two_setups` is `false`). |
-| `protein_id_mode` | `String` | How trait IDs are derived from filenames (`first_segment` or `stem`). |
-| `n_jobs`, `memory_gb` | `Int` | Parallel worker count and worker RAM (gigabytes; formatted as `"{memory_gb} GB"` in the backend runtime). |
-| `diagnostic_plots` | `Boolean` | Emit per-trait diagnostic figures when dependencies are present in the image. |
-| `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality). |
-| `docker` | `String` | Full container image URI (including tag). |
+
+| Input                            | Type            | Description                                                                                               |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
+| `paths_setup_a`                  | `File`          | Text file: one `gs://` URI per line (sumstats per trait).                                                 |
+| `two_setups`                     | `Boolean`       | `true` = compare two setups; `false` = single batch.                                                      |
+| `paths_setup_b`                  | `File?`         | Second path list; required when `two_setups` is `true`.                                                   |
+| `lead_variants_json`             | `File?`         | Optional fixed lead file. Omit to auto-generate under `results/` on the worker.                           |
+| `cis_json`                       | `File?`         | Optional cis masking specification.                                                                       |
+| `setup_label_a`, `setup_label_b` | `String`        | Human-readable setup names (second label unused when `two_setups` is `false`).                            |
+| `protein_id_mode`                | `String`        | How trait IDs are derived from filenames (`first_segment` or `stem`).                                     |
+| `n_jobs`, `memory_gb`            | `Int`           | Parallel worker count and worker RAM (gigabytes; formatted as `"{memory_gb} GB"` in the backend runtime). |
+| `diagnostic_plots`               | `Boolean`       | Emit per-trait diagnostic figures when dependencies are present in the image.                             |
+| `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality).                       |
+| `docker`                         | `String`        | Full container image URI (including tag).                                                                 |
+
 
 ---
 
 ## Workflow outputs
 
-Cromwell materialises **declared output files** (and may copy them to a bucket if **`final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
+Cromwell materialises **declared output files** (and may copy them to a bucket if `**final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
 
-| Artefact | Role |
-|----------|------|
-| `calibration_outputs.tgz` | Archive of the entire `results/` tree. |
-| `calibration_compare.metrics.long.csv` | Long-format metrics per trait (and setup, if comparing). |
-| `calibration_compare.summary.json` | Run-level summary. |
-| `calibration_compare.tiered_report.txt` | Human-readable tiered KPI report. |
-| `gwas_calibration_qc.log` | Execution log. |
-| `results/lead_variants.json` | Present when leads were auto-generated or written to that path. |
 
-With **`diagnostic_plots: true`**, expect additional plot directories inside the tarball (e.g. QQ and tail-excess panels per trait).
+| Artefact                                | Role                                                            |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `calibration_outputs.tgz`               | Archive of the entire `results/` tree.                          |
+| `calibration_compare.metrics.long.csv`  | Long-format metrics per trait (and setup, if comparing).        |
+| `calibration_compare.summary.json`      | Run-level summary.                                              |
+| `calibration_compare.tiered_report.txt` | Human-readable tiered KPI report.                               |
+| `gwas_calibration_qc.log`               | Execution log.                                                  |
+| `results/lead_variants.json`            | Present when leads were auto-generated or written to that path. |
 
----
 
-## Worked example (local / private)
-
-A **chunk-scoped** example (path lists, bucket-specific inputs JSON, workflow options) may live under **`wdl/chunk_0001_0500/`** in private checkouts; that directory is **gitignored** here so public clones contain no internal **`gs://`** references. For a portable pattern: generate path lists with **`scripts/generate_path_lists.py`**, copy **`wdl/gwas_calibration_qc.example.json`** to your inputs JSON, set **`two_setups`**, **`docker`**, optional **`cis_json`**, and omit **`lead_variants_json`** to auto-generate leads on the worker. Size worker disk from the total localised sumstats volume (order of **~100 GiB** for large pQTL batches is typical).
+With `**diagnostic_plots: true**`, expect additional plot directories inside the tarball (e.g. QQ and tail-excess panels per trait).
 
 ---
 
@@ -192,10 +194,10 @@ A **chunk-scoped** example (path lists, bucket-specific inputs JSON, workflow op
 
 The **Dockerfile** expects a **build context** that contains **both**:
 
-- this **`gwas-calibration-qc-wdl`** tree (for workflow-specific requirements), and  
-- the **gwas-calibration-utils** source tree (sibling path **`Python_scripts/gwas_calibration_utils`** in the upstream layout).
+- this `**gwas-calibration-qc-wdl`** tree (for workflow-specific requirements), and  
+- the **gwas-calibration-utils** source tree (sibling path `**Python_scripts/gwas_calibration_utils`** in the upstream layout).
 
-From that shared parent directory (call it **`REPO_ROOT`**):
+From that shared parent directory (call it `**REPO_ROOT**`):
 
 ```bash
 cd REPO_ROOT
@@ -207,14 +209,16 @@ docker build \
   .
 ```
 
-| Symptom | Likely cause |
-|---------|----------------|
-| `COPY` fails for `Python_scripts/…` | Build context is not the parent that contains both trees. |
-| Image pull fails on Cromwell | Worker service account lacks registry read permission, or URI/tag mismatch. |
+
+| Symptom                             | Likely cause                                                                |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| `COPY` fails for `Python_scripts/…` | Build context is not the parent that contains both trees.                   |
+| Image pull fails on Cromwell        | Worker service account lacks registry read permission, or URI/tag mismatch. |
+
 
 ### Smoke test
 
-After install, the image exposes the **`gwas-calibration-qc`** console entry point:
+After install, the image exposes the `**gwas-calibration-qc**` console entry point:
 
 ```bash
 docker run --rm LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
@@ -230,13 +234,13 @@ gcloud auth configure-docker LOCATION-docker.pkg.dev
 docker push LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
 ```
 
-Use the **same** URI (including tag) as **`gwas_calibration_qc.docker`** in your Cromwell inputs.
+Use the **same** URI (including tag) as `**gwas_calibration_qc.docker`** in your Cromwell inputs.
 
 ---
 
 ## Cromwell requirements
 
-The workflow uses **conditional calls** (`if` on `two_setups`) and **`select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
+The workflow uses **conditional calls** (`if` on `two_setups`) and `**select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
 
 Default runtime hints target **preemptible** VMs in **europe-west1** with **no public egress** from the worker (`noAddress: true`), matching common secure batch-QC deployments; adjust zones and flags to match your organisation’s policy.
 
@@ -251,4 +255,4 @@ Default runtime hints target **preemptible** VMs in **europe-west1** with **no p
 
 ## Licence
 
-The **gwas-calibration-utils** package is distributed under the **MIT Licence** (see its project metadata). **This WDL repository** does not ship a separate licence file in-tree; for public release, add a **`LICENSE`** file with your organisation’s chosen terms for the workflow and Dockerfile, and ensure redistribution of the bundled Python package complies with **MIT** (retain copyright and licence notices in source distributions as required).
+The **gwas-calibration-utils** package is distributed under the **MIT Licence** (see its project metadata). **This WDL repository** does not ship a separate licence file in-tree; for public release, add a `**LICENSE`** file with your organisation’s chosen terms for the workflow and Dockerfile, and ensure redistribution of the bundled Python package complies with **MIT** (retain copyright and licence notices in source distributions as required).

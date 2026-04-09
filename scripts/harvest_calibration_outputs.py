@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Reza Jabal; PhD; rjabal@broadinstitute.org
 """
 Copy selected Cromwell workflow outputs to a destination GCS prefix (optional helper).
 
