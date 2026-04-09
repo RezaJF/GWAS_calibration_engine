@@ -1,0 +1,18 @@
+{
+  "gwas_calibration_qc.paths_setup_a": "gs://your-bucket/calibration/path_lists/setup_a_paths.txt",
+  "gwas_calibration_qc.two_setups": true,
+  "gwas_calibration_qc.paths_setup_b": "gs://your-bucket/calibration/path_lists/setup_b_paths.txt",
+  "gwas_calibration_qc.cis_json": "gs://your-bucket/calibration/config/cis_regions.json",
+
+  "gwas_calibration_qc.setup_label_a": "all_bridges_no_batch_correction",
+  "gwas_calibration_qc.setup_label_b": "flagged_bridges_removed_batch_corrected",
+
+  "gwas_calibration_qc.protein_id_mode": "first_segment",
+  "gwas_calibration_qc.n_jobs": 4,
+  "gwas_calibration_qc.memory_gb": 16,
+  "gwas_calibration_qc.diagnostic_plots": true,
+  "gwas_calibration_qc.top_n_trans": 100,
+  "gwas_calibration_qc.probability_rho": 1.0,
+
+  "gwas_calibration_qc.docker": "europe-west1-docker.pkg.dev/your-project/your-registry/gwas-calibration-qc:v1"
+}
