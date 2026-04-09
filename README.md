@@ -2,6 +2,8 @@
 
 A reproducible **[WDL](https://openwdl.org/)** workflow for large-scale **statistical calibration quality control** of genome-wide association study (GWAS) or protein quantitative trait locus (pQTL) **summary statistics** on **Google Cloud Platform**. The workflow localises per-trait sumstats from object storage, runs a containerised calibration analysis in parallel where configured, and packages metrics, reports, and optional diagnostic figures for downstream triage or method comparison.
 
+**Licence:** The **WDL**, **Dockerfile**, **helper scripts**, and **documentation** in this repository are released under the **[MIT Licence](LICENSE)**. The bundled **gwas-calibration-utils** dependency remains under its own **MIT** terms (see that package’s metadata).
+
 This repository provides **orchestration only** (WDL, Docker build metadata, and operational examples). The numerical methods are implemented in the **gwas-calibration-utils** Python package, which is installed inside the workflow container image.
 
 ---
@@ -127,7 +129,7 @@ flowchart TB
 
 
 
-**Lead variants:** If the workflow input `**lead_variants_json`** is **omitted**, the task passes an output path under `**results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask. Supply `**lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
+**Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
 
 **Cis regions:** Optional JSON defines per-trait intervals and/or explicit positions to exclude before metrics.
 
@@ -137,6 +139,7 @@ flowchart TB
 
 ```
 gwas-calibration-qc-wdl/
+├── LICENSE
 ├── docker/
 │   └── Dockerfile
 ├── scripts/
@@ -147,7 +150,7 @@ gwas-calibration-qc-wdl/
 └── README.md
 ```
 
-Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see `**.gitignore`**). Build path lists with `**scripts/generate_path_lists.py**` and start from `**wdl/gwas_calibration_qc.example.json**`.
+Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see **`.gitignore`**). Build path lists with **`scripts/generate_path_lists.py`** and start from **`wdl/gwas_calibration_qc.example.json`**.
 
 ---
 
@@ -171,9 +174,23 @@ Chunk-specific path lists and Cromwell inputs that point at internal buckets are
 
 ---
 
+## Parallelism, scattering, and jobs per task
+
+This workflow **does not use Cromwell `scatter`** over traits. Each successful submission runs **exactly one** backend job: either **`run_calibration_one_setup`** or **`run_calibration_two_setups`**. There is **no** fan-out of one virtual machine per protein; Cromwell schedules **one task instance** per workflow run (plus the usual retries).
+
+**What the path list represents:** Every line in **`paths_setup_a`** (and, when comparing, **`paths_setup_b`**) is a **`gs://`** object that Cromwell **localises to the same worker** before the command starts. All listed traits are therefore processed **inside that single task**, sharing CPU, RAM, and ephemeral disk.
+
+**`n_jobs` (shards inside one job):** The input **`n_jobs`** is passed through to the calibration engine as its worker pool size and is also set as **`runtime.cpu: n_jobs`** in the WDL. The engine uses a **process pool** with at most **`n_jobs`** concurrent trait-level workers when **`n_jobs` > 1**; with **`n_jobs` = 1**, traits are processed sequentially. This controls **intra-task** parallelism only. It does **not** change how many Cromwell jobs are created.
+
+**Disk sizing:** Task disk is **`ceil`** of the **total localised input size** of all path-listed files (both setups when comparing) plus a fixed padding (**20 GiB** in the WDL). Larger path lists or bigger sumstats therefore request proportionally larger SSDs on the same single worker.
+
+**Sharding across many Cromwell jobs (optional pattern):** To obtain **true** scatter — many independent jobs, each with its own VM and smaller disk footprint — **split** your master path list into **N** text files (non-overlapping subsets of traits) and **submit N workflow runs** (or wrap **`gwas_calibration_qc`** in a parent WDL that uses Cromwell **`scatter`** over those lists). Each such **shard** is then one Cromwell job with its own **`n_jobs`**, **`memory_gb`**, and localised data subset. Keep **pairing order** consistent across **`paths_setup_a`** and **`paths_setup_b`** when using two setups so protein keys still align within each shard.
+
+---
+
 ## Workflow outputs
 
-Cromwell materialises **declared output files** (and may copy them to a bucket if `**final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
+Cromwell materialises **declared output files** (and may copy them to a bucket if **`final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
 
 
 | Artefact                                | Role                                                            |
@@ -186,7 +203,7 @@ Cromwell materialises **declared output files** (and may copy them to a bucket i
 | `results/lead_variants.json`            | Present when leads were auto-generated or written to that path. |
 
 
-With `**diagnostic_plots: true**`, expect additional plot directories inside the tarball (e.g. QQ and tail-excess panels per trait).
+With **`diagnostic_plots: true`**, expect additional plot directories inside the tarball (e.g. QQ and tail-excess panels per trait).
 
 ---
 
@@ -194,10 +211,10 @@ With `**diagnostic_plots: true**`, expect additional plot directories inside the
 
 The **Dockerfile** expects a **build context** that contains **both**:
 
-- this `**gwas-calibration-qc-wdl`** tree (for workflow-specific requirements), and  
-- the **gwas-calibration-utils** source tree (sibling path `**Python_scripts/gwas_calibration_utils`** in the upstream layout).
+- this **`gwas-calibration-qc-wdl`** tree (for workflow-specific requirements), and  
+- the **gwas-calibration-utils** source tree (sibling path **`Python_scripts/gwas_calibration_utils`** in the upstream layout).
 
-From that shared parent directory (call it `**REPO_ROOT**`):
+From that shared parent directory (call it **`REPO_ROOT`**):
 
 ```bash
 cd REPO_ROOT
@@ -218,7 +235,7 @@ docker build \
 
 ### Smoke test
 
-After install, the image exposes the `**gwas-calibration-qc**` console entry point:
+After install, the image exposes the **`gwas-calibration-qc`** console entry point:
 
 ```bash
 docker run --rm LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
@@ -234,13 +251,13 @@ gcloud auth configure-docker LOCATION-docker.pkg.dev
 docker push LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
 ```
 
-Use the **same** URI (including tag) as `**gwas_calibration_qc.docker`** in your Cromwell inputs.
+Use the **same** URI (including tag) as **`gwas_calibration_qc.docker`** in your Cromwell inputs.
 
 ---
 
 ## Cromwell requirements
 
-The workflow uses **conditional calls** (`if` on `two_setups`) and `**select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
+The workflow uses **conditional calls** (`if` on `two_setups`) and **`select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
 
 Default runtime hints target **preemptible** VMs in **europe-west1** with **no public egress** from the worker (`noAddress: true`), matching common secure batch-QC deployments; adjust zones and flags to match your organisation’s policy.
 
@@ -248,11 +265,12 @@ Default runtime hints target **preemptible** VMs in **europe-west1** with **no p
 
 ## Attribution
 
-- **Numerical methodology and metric definitions:** **gwas-calibration-utils** (Python; MIT-licensed in its source metadata). Cite or link that package and this workflow repository if you use outputs in publications.  
+- **Numerical methodology and metric definitions:** **gwas-calibration-utils** (Python; MIT-licensed in its source metadata).
 - **Path-list and object-storage patterns** follow common practice for large-scale GWAS execution on GCS-backed Cromwell.
 
 ---
 
 ## Licence
 
-The **gwas-calibration-utils** package is distributed under the **MIT Licence** (see its project metadata). **This WDL repository** does not ship a separate licence file in-tree; for public release, add a `**LICENSE`** file with your organisation’s chosen terms for the workflow and Dockerfile, and ensure redistribution of the bundled Python package complies with **MIT** (retain copyright and licence notices in source distributions as required).
+- **This repository** (WDL, Docker build files, scripts under `scripts/`, and this README): **[MIT Licence](LICENSE)** — see **`LICENSE`** for the full text.
+- **gwas-calibration-utils** (vendored or installed from source into the image): **MIT** under that package’s own copyright and licence notice; retain those notices when redistributing source or images that bundle the package.
