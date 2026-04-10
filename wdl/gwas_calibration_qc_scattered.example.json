@@ -1,0 +1,21 @@
+{
+  "gwas_calibration_qc_scattered.master_paths_setup_a": "gs://your-bucket/calibration/path_lists/master_setup_a_paths.txt",
+  "gwas_calibration_qc_scattered.master_paths_setup_b": "gs://your-bucket/calibration/path_lists/master_setup_b_paths.txt",
+  "gwas_calibration_qc_scattered.two_setups": true,
+  "gwas_calibration_qc_scattered.n_shards": 10,
+
+  "gwas_calibration_qc_scattered.cis_json": "gs://your-bucket/calibration/config/cis_regions.json",
+
+  "gwas_calibration_qc_scattered.setup_label_a": "setup_A",
+  "gwas_calibration_qc_scattered.setup_label_b": "setup_B",
+
+  "gwas_calibration_qc_scattered.protein_id_mode": "first_segment",
+  "gwas_calibration_qc_scattered.n_jobs": 4,
+  "gwas_calibration_qc_scattered.memory_gb": 16,
+  "gwas_calibration_qc_scattered.diagnostic_plots": true,
+  "gwas_calibration_qc_scattered.top_n_trans": 100,
+  "gwas_calibration_qc_scattered.probability_rho": 1.0,
+  "gwas_calibration_qc_scattered.lead_window_bp": 1500000,
+
+  "gwas_calibration_qc_scattered.docker": "europe-west1-docker.pkg.dev/your-project/your-registry/gwas-calibration-qc:v1"
+}

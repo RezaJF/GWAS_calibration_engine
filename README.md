@@ -19,6 +19,17 @@ Typical uses:
 
 The workflow does **not** replace association testing, fine-mapping, or colocalisation; it **summarises distributional behaviour** of *p*-values on the masked SNP set and emits ranked **composite calibration scores** for relative ranking within a run.
 
+### Lead-variant cis-like window (geometry)
+
+The workflow parameter **`lead_window_bp`** is a **half-width in base pairs** on the **lead chromosome only** (the chromosome where the trait’s lead variant lies). Masking is applied **symmetrically** around the lead’s genomic position:
+
+- **Excluded interval (inclusive bounds):**  
+  \[ **lead_pos − lead_window_bp**, **lead_pos + lead_window_bp** \]  
+  on that chromosome.
+- **Default:** `lead_window_bp = 1 500 000` → **±1.5 Mb** around the lead → **3 Mb** contiguous span.
+- **Worked example:** Suppose the lead variant is **chr1:50 000 000** (GRCh38-style coordinates) and `lead_window_bp = 1 500 000`. Then every variant on **chr1** with position in **48 500 000–51 500 000** is **excluded** from the *trans* calibration set. Variants on other chromosomes are **not** affected by this rule (cis JSON handles separate locus exclusions).
+- **`lead_window_bp = 0`:** Lead coordinates may still be loaded or auto-generated, but **no** lead-adjacent SNPs are removed; only cis JSON (if any) applies.
+
 ---
 
 ## Scientific rationale
@@ -49,7 +60,9 @@ All metrics below are computed on the **masked** SNP table for each trait (same 
 | **Rare vs common**      | Same K/E-style tail ratio restricted to **rare** vs **common** SNPs (using allele-frequency column).                                                                           | Similar ratios; large gaps suggest frequency-specific artefacts |
 
 
-**Composite calibration score** (per trait, **lower is better**): a **weighted sum of penalties** measuring distance from the null for tail quantile λ, median λ, tail excess, rare–common discrepancy, and a **capped, down-weighted** GOF term so that tail behaviour drives the score. **Robust *z*-scores** of that composite are formed **within each workflow run** (median and MAD), then mapped to a **run-relative** “quality probability” via a logistic transform; this is a **ranking aid within the batch**, not a calibrated Bayesian posterior.
+**Composite calibration score** (per trait, **lower is better**): a **weighted sum of penalties** measuring distance from the null for tail quantile λ, median λ, tail excess, rare–common discrepancy, and a **capped, down-weighted** GOF term so that tail behaviour drives the score. The GOF contribution is **min–max normalised across all traits in the batch** before entering the score, so it is **not** a purely per-trait quantity. **Robust *z*-scores** of that composite are formed **within each workflow run** (median and MAD across **all** traits’ scores), then mapped to a **run-relative** “quality probability” via a logistic transform; this is a **ranking aid within the batch**, not a calibrated Bayesian posterior.
+
+Because both the **GOF normalisation** and the **median/MAD standardisation** require the **entire batch**, a naïve Cromwell scatter that computes “quality probability” **inside each shard** would be statistically wrong. The **scatter–gather** workflow (below) defers those steps to a **single gather** task after all shards finish.
 
 Full formula detail is documented alongside the **gwas-calibration-utils** package (see **Attribution**).
 
@@ -147,16 +160,108 @@ GWAS_calibration_engine/
 │   └── harvest_calibration_outputs.py
 ├── wdl/
 │   ├── gwas_calibration_qc.wdl
-│   └── gwas_calibration_qc.example.json
+│   ├── gwas_calibration_qc.example.json
+│   ├── gwas_calibration_qc_scattered.wdl
+│   └── gwas_calibration_qc_scattered.example.json
 ├── requirements.txt
 └── README.md
 ```
 
-Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see **`.gitignore`**). Build path lists with **`scripts/generate_path_lists.py`** and start from **`wdl/gwas_calibration_qc.example.json`**.
+Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see **`.gitignore`**). Build path lists with **`scripts/generate_path_lists.py`** and start from **`wdl/gwas_calibration_qc.example.json`** or **`wdl/gwas_calibration_qc_scattered.example.json`**.
 
 ---
 
-## Workflow inputs (summary)
+## Parallelism, scattering, and jobs per task
+
+Two orchestration modes exist:
+
+| Mode | WDL | Cromwell jobs (typical) | When to use |
+|------|-----|---------------------------|-------------|
+| **Single task** | [`wdl/gwas_calibration_qc.wdl`](wdl/gwas_calibration_qc.wdl) | **1** heavy VM per workflow run | Smaller batches, simpler ops |
+| **Scatter–gather** | [`wdl/gwas_calibration_qc_scattered.wdl`](wdl/gwas_calibration_qc_scattered.wdl) | **1** split + **K** shard VMs + **1** gather | Large batches (e.g. thousands of traits), smaller disk per VM, higher wall-clock parallelism |
+
+### Single-task workflow (`gwas_calibration_qc.wdl`)
+
+This variant **does not** use Cromwell **`scatter`** over traits. Each successful submission runs **one** backend job: **`run_calibration_one_setup`** or **`run_calibration_two_setups`**. Every line in **`paths_setup_a`** (and **`paths_setup_b`** when comparing) is localised to **that same worker**; all traits share one machine’s CPU, RAM, and disk.
+
+**`n_jobs` (intra-task parallelism):** Passed to the calibration engine and set as **`runtime.cpu`**. The engine uses a **process pool** of at most **`n_jobs`** concurrent trait workers. This does **not** multiply Cromwell jobs.
+
+**Disk:** **`ceil`** of total localised input size (both setups when comparing) plus **20 GiB** padding.
+
+### Scatter–gather workflow (`gwas_calibration_qc_scattered.wdl`)
+
+Use this when you want **many Cromwell shards**, each processing a **subset** of the master path list(s), while still computing **batch-global** composite scores and quality probabilities **once** at the end.
+
+**`n_shards` (Cromwell-level parallelism):** The **`split_path_lists`** task splits **`master_paths_setup_a`** (and **`master_paths_setup_b`** when **`two_setups`**) into **`min(n_shards, N)`** shards, where **N** is the number of lines. Each shard is one **`compute_shard_metrics`** call running **`gwas-calibration-qc --phase scatter`**, which writes **`calibration_compare.partial_metrics.csv`** (raw per-trait metrics **only**).
+
+**`n_jobs` (still intra-task):** Within each shard VM, **`n_jobs`** controls the Python process pool size for traits **in that shard** (same semantics as the single-task workflow).
+
+**Gather:** After all shards succeed, **`aggregate_and_score`** runs **`--phase gather`**, merges every partial CSV, runs global **`calibration_score`**, **median/MAD** standardisation, and **`quality_prob_good`**, then emits the same final **`calibration_compare.metrics.long.csv`**, **`summary.json`**, and **`tiered_report.txt`** as a full single-batch run.
+
+**Pairing (two setups):** Master lists must be **line-aligned**; the splitter preserves row pairing within each shard.
+
+**Disk per shard:** Scales with **shard size** (~1/K of total sumstats) plus padding — typically far smaller than one VM holding all traits.
+
+```mermaid
+flowchart LR
+  subgraph splitTask["split_path_lists"]
+    MA["master_paths_setup_a"]
+    MB["master_paths_setup_b"]
+    MA --> SH[["shard path files"]]
+    MB --> SH
+  end
+  subgraph scatterPhase["scatter: K parallel"]
+    C1["compute_shard_metrics<br/>phase=scatter"]
+    C2["compute_shard_metrics<br/>phase=scatter"]
+    CK["…"]
+    P1["partial_metrics.csv"]
+    P2["partial_metrics.csv"]
+    PK["…"]
+    C1 --> P1
+    C2 --> P2
+    CK --> PK
+  end
+  subgraph gatherTask["aggregate_and_score"]
+    G["phase=gather<br/>global scores + probs"]
+    OUT["metrics.long.csv<br/>summary.json<br/>tiered_report.txt"]
+    G --> OUT
+  end
+  SH --> C1
+  SH --> C2
+  SH --> CK
+  P1 --> G
+  P2 --> G
+  PK --> G
+```
+
+### CLI phases (container / local)
+
+The Python engine supports **`--phase full`** (default), **`--phase scatter`**, and **`--phase gather`**. The **same** container image is used for scatter and gather; **rebuild** only when the **gwas-calibration-utils** code changes.
+
+| Phase | Role |
+|-------|------|
+| **`full`** | End-to-end single batch (current default behaviour). |
+| **`scatter`** | Per-shard raw metrics → **`calibration_compare.partial_metrics.csv`**; no summary/tiered report. |
+| **`gather`** | **`--partial-csv-list`** (and/or repeated **`--partial-csv`**) → final long CSV, summary, tiered report, pivot (when comparing). |
+
+---
+
+## Scatter–gather workflow inputs (summary)
+
+| Input | Type | Description |
+|-------|------|-------------|
+| `master_paths_setup_a` | `File` | Master text file: one `gs://` URI per line. |
+| `master_paths_setup_b` | `File?` | Second master list; required when `two_setups` is `true` (same line count as A). |
+| `two_setups` | `Boolean` | Paired two-setup comparison vs single batch. |
+| `n_shards` | `Int` | Requested shard count; effective shards = **`min(n_shards, N traits)`**. |
+| `n_jobs`, `memory_gb`, `lead_window_bp`, `cis_json`, `lead_variants_json`, `diagnostic_plots`, … | — | Same meaning as in the single-task workflow (see table below). |
+| `split_cpu`, `split_memory_mb` | `Int` | Resources for **`split_path_lists`**. |
+| `gather_cpu`, `gather_memory_gb` | `Int` | Resources for **`aggregate_and_score`** (CSV-only; small). |
+| `docker` | `String` | Container image URI (same as single-task workflow). |
+
+---
+
+## Workflow inputs (summary) — single-task `gwas_calibration_qc.wdl`
 
 
 | Input                            | Type            | Description                                                                                               |
@@ -174,27 +279,13 @@ Chunk-specific path lists and Cromwell inputs that point at internal buckets are
 | `lead_window_bp`                 | `Int`           | Half-width in bp around each lead on the lead chromosome (default **1500000** → ±1.5 Mb, **3 Mb** total span). **0** disables lead masking while still loading leads. |
 | `docker`                         | `String`        | Full container image URI (including tag).                                                                 |
 
-
----
-
-## Parallelism, scattering, and jobs per task
-
-This workflow **does not use Cromwell `scatter`** over traits. Each successful submission runs **exactly one** backend job: either **`run_calibration_one_setup`** or **`run_calibration_two_setups`**. There is **no** fan-out of one virtual machine per protein; Cromwell schedules **one task instance** per workflow run (plus the usual retries).
-
-**What the path list represents:** Every line in **`paths_setup_a`** (and, when comparing, **`paths_setup_b`**) is a **`gs://`** object that Cromwell **localises to the same worker** before the command starts. All listed traits are therefore processed **inside that single task**, sharing CPU, RAM, and ephemeral disk.
-
-**`n_jobs` (shards inside one job):** The input **`n_jobs`** is passed through to the calibration engine as its worker pool size and is also set as **`runtime.cpu: n_jobs`** in the WDL. The engine uses a **process pool** with at most **`n_jobs`** concurrent trait-level workers when **`n_jobs` > 1**; with **`n_jobs` = 1**, traits are processed sequentially. This controls **intra-task** parallelism only. It does **not** change how many Cromwell jobs are created.
-
-**Disk sizing:** Task disk is **`ceil`** of the **total localised input size** of all path-listed files (both setups when comparing) plus a fixed padding (**20 GiB** in the WDL). Larger path lists or bigger sumstats therefore request proportionally larger SSDs on the same single worker.
-
-**Sharding across many Cromwell jobs (optional pattern):** To obtain **true** scatter — many independent jobs, each with its own VM and smaller disk footprint — **split** your master path list into **N** text files (non-overlapping subsets of traits) and **submit N workflow runs** (or wrap **`gwas_calibration_qc`** in a parent WDL that uses Cromwell **`scatter`** over those lists). Each such **shard** is then one Cromwell job with its own **`n_jobs`**, **`memory_gb`**, and localised data subset. Keep **pairing order** consistent across **`paths_setup_a`** and **`paths_setup_b`** when using two setups so protein keys still align within each shard.
-
 ---
 
 ## Workflow outputs
 
 Cromwell materialises **declared output files** (and may copy them to a bucket if **`final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
 
+### Single-task workflow (`gwas_calibration_qc.wdl`)
 
 | Artefact                                | Role                                                            |
 | --------------------------------------- | --------------------------------------------------------------- |
@@ -205,8 +296,16 @@ Cromwell materialises **declared output files** (and may copy them to a bucket i
 | `gwas_calibration_qc.log`               | Execution log.                                                  |
 | `results/lead_variants.json`            | Present when leads were auto-generated or written to that path. |
 
+### Scatter–gather workflow (`gwas_calibration_qc_scattered.wdl`)
 
-With **`diagnostic_plots: true`**, expect additional plot directories inside the tarball (e.g. QQ and tail-excess panels per trait).
+| Artefact | Role |
+|----------|------|
+| **`metrics_long_csv`**, **`summary_json`**, **`tiered_report_txt`**, **`pivot_csv`** | Same semantics as the single-task workflow (final batch-global scores). |
+| **`shard_partial_metrics_csv`** | `Array[File]`: one **`calibration_compare.partial_metrics.csv`** per shard. |
+| **`shard_logs`**, **`shard_plots_tgz`**, **`shard_lead_variants_json`** | Per-shard logs, **`results/`** tarballs, and optional **`lead_variants.json`** copies. |
+| **`gather_log`** | Log from the **`aggregate_and_score`** task. |
+
+With **`diagnostic_plots: true`**, each shard’s **`shard_plots_tgz`** contains that shard’s figures (QQ, tail-excess, etc.); there is **no** single combined tarball unless you merge outputs downstream.
 
 ---
 
