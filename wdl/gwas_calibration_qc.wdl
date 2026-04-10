@@ -31,6 +31,8 @@ workflow gwas_calibration_qc {
     Boolean diagnostic_plots = true
     Int    top_n_trans = 100
     Float  probability_rho = 1.0
+    # Half-width around each lead (bp): exclude |pos - lead_pos| <= this on the lead chromosome (default ±1.5 Mb → 3 Mb cis-like span).
+    Int    lead_window_bp = 1500000
 
     String docker
   }
@@ -50,6 +52,7 @@ workflow gwas_calibration_qc {
         diagnostic_plots   = diagnostic_plots,
         top_n_trans        = top_n_trans,
         probability_rho    = probability_rho,
+        lead_window_bp     = lead_window_bp,
         docker             = docker
     }
   }
@@ -67,6 +70,7 @@ workflow gwas_calibration_qc {
         diagnostic_plots   = diagnostic_plots,
         top_n_trans        = top_n_trans,
         probability_rho    = probability_rho,
+        lead_window_bp     = lead_window_bp,
         docker             = docker
     }
   }
@@ -95,6 +99,7 @@ task run_calibration_one_setup {
     Boolean diagnostic_plots
     Int     top_n_trans
     Float   probability_rho
+    Int     lead_window_bp
     String  docker
   }
 
@@ -118,7 +123,8 @@ task run_calibration_one_setup {
       --n-jobs ~{n_jobs} \
       ~{if diagnostic_plots then "--diagnostic-plots" else ""} \
       --top-n-trans ~{top_n_trans} \
-      --probability-rho ~{probability_rho}
+      --probability-rho ~{probability_rho} \
+      --lead-window-bp ~{lead_window_bp}
 
     tar -czf calibration_outputs.tgz -C results .
   >>>
@@ -159,6 +165,7 @@ task run_calibration_two_setups {
     Boolean diagnostic_plots
     Int     top_n_trans
     Float   probability_rho
+    Int     lead_window_bp
     String  docker
   }
 
@@ -184,7 +191,8 @@ task run_calibration_two_setups {
       --n-jobs ~{n_jobs} \
       ~{if diagnostic_plots then "--diagnostic-plots" else ""} \
       --top-n-trans ~{top_n_trans} \
-      --probability-rho ~{probability_rho}
+      --probability-rho ~{probability_rho} \
+      --lead-window-bp ~{lead_window_bp}
 
     tar -czf calibration_outputs.tgz -C results .
   >>>

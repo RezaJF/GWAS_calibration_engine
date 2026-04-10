@@ -10,7 +10,7 @@ This repository provides **orchestration only** (WDL, Docker build metadata, and
 
 ## Purpose and scope
 
-**Calibration** here means checking whether *p*-values on variants that are **not** expected to carry a true genetic signal behave like **null *p*-values** — i.e. approximately **uniform on (0, 1)** after appropriate masking. Strong cis associations and lead signals violate that null on nearby variants; the analysis therefore **masks** (excludes) configurable **cis regions** and a **symmetric window around each lead variant** before evaluating the *trans* remainder.
+**Calibration** here means checking whether *p*-values on variants that are **not** expected to carry a true genetic signal behave like **null *p*-values** — i.e. approximately **uniform on (0, 1)** after appropriate masking. Strong cis associations and lead signals violate that null on nearby variants; the analysis therefore **masks** (excludes) configurable **cis regions** (from optional JSON) and a **symmetric window around each lead variant** (workflow default **±1.5 Mb** on the lead chromosome, **3 Mb** total — input **`lead_window_bp`**) before evaluating the *trans* remainder.
 
 Typical uses:
 
@@ -80,7 +80,7 @@ flowchart TB
     LD{{"lead JSON<br/>provided?"}}
     GEN_LD[["Else target path under results/<br/>engine writes leads from<br/>genome-wide min p per trait"]]
     LOAD_LD[["Load lead chrom / pos"]]
-    MASK_LD[["Drop SNPs with<br/>|pos - lead| <= window<br/>on lead chromosome"]]
+    MASK_LD[["Drop SNPs with<br/>|pos - lead| <= lead_window_bp<br/>(default ±1.5 Mb)"]]
     TAB[["Masked trans table<br/>per trait"]]
     MET[["chi-square transforms,<br/>lambda_GC, lambda_q,<br/>K/E, GOF, rare vs common"]]
     SC[["Composite score<br/>robust z, quality prob"]]
@@ -129,7 +129,7 @@ flowchart TB
 
 
 
-**Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
+**Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask (**default `lead_window_bp` = 1 500 000** → **±1.5 Mb** on the lead chromosome, **3 Mb** total cis-like span). Override via **`gwas_calibration_qc.lead_window_bp`** in inputs JSON. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
 
 **Cis regions:** Optional JSON defines per-trait intervals and/or explicit positions to exclude before metrics.
 
@@ -171,6 +171,7 @@ Chunk-specific path lists and Cromwell inputs that point at internal buckets are
 | `n_jobs`, `memory_gb`            | `Int`           | Parallel worker count and worker RAM (gigabytes; formatted as `"{memory_gb} GB"` in the backend runtime). |
 | `diagnostic_plots`               | `Boolean`       | Emit per-trait diagnostic figures when dependencies are present in the image.                             |
 | `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality).                       |
+| `lead_window_bp`                 | `Int`           | Half-width in bp around each lead on the lead chromosome (default **1500000** → ±1.5 Mb, **3 Mb** total span). **0** disables lead masking while still loading leads. |
 | `docker`                         | `String`        | Full container image URI (including tag).                                                                 |
 
 
@@ -316,6 +317,18 @@ Use the **same** URI (including tag) as **`gwas_calibration_qc.docker`** in your
 The workflow uses **conditional calls** (`if` on `two_setups`) and **`select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
 
 Default runtime hints target **preemptible** VMs in **europe-west1** with **no public egress** from the worker (`noAddress: true`), matching common secure batch-QC deployments; adjust zones and flags to match your organisation’s policy.
+
+### Optional `File?` inputs and path localisation
+
+**`cis_json`** and optional **`lead_variants_json`** are **`File?`** workflow inputs. The WDL builds `--cis-json …` and `--lead-variants-json …` flags using **`~{…}`** interpolation **inside** the task `command` block, so Cromwell substitutes **localised disk paths** after download. Do **not** pre-compose those paths as `String` values in the task declaration section by concatenating a `File?` into a string: that can freeze the original **`gs://`** URI in the rendered script and cause the worker to fail when the engine expects a readable local file.
+
+### `lead_window_bp` and the container image
+
+The workflow passes **`--lead-window-bp ~{lead_window_bp}`** explicitly (default **1500000**). That keeps masking behaviour aligned with this repository even if an older image still carried a different Python default. To change the window, set **`gwas_calibration_qc.lead_window_bp`** in Cromwell inputs (use **0** to load leads but disable lead-window masking). Rebuild and push the image when you need an updated **gwas-calibration-utils** implementation inside the container.
+
+### Workflow options and Google labels
+
+Some Cromwell clients require **`google_labels`** (including **`product`**) in the **workflow options** JSON. If your tool treats **`--options`** and **`--l`** as mutually exclusive, add a **`google_labels`** object to the same JSON you pass as **`--options`** (see your platform’s submission examples).
 
 ---
 
