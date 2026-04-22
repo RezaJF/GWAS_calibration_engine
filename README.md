@@ -319,21 +319,28 @@ With **`diagnostic_plots: true`**, each shard’s **`shard_plots_tgz`** contains
 
 ## Building the container image
 
-The **Dockerfile** expects a **build context** that contains **both**:
+The image is **self-contained**: the Python code it runs lives in the
+**`gwas_calibration_utils/`** git submodule (pinned at a specific tag) at the
+repository root. The Dockerfile COPYs that directory and `pip install`s it in
+src-layout (extras `[all]` pull the scientific stack, GWASlab, and
+intervaltree). Console entry points `gwas-calibration-qc` and
+`gwaslab-mqq-plots` are on `$PATH` after install.
 
-- this **`GWAS_calibration_engine`** tree (for workflow-specific requirements), and
-- the **gwas-calibration-utils** source tree (sibling path **`Python_scripts/gwas_calibration_utils`** in the upstream layout).
+> **Clone with submodule:**
+> ```bash
+> git clone --recurse-submodules https://github.com/RezaJF/GWAS_calibration_engine.git
+> # or after a plain clone:
+> git submodule update --init --recursive
+> ```
 
 ### Option A — Local Docker
 
-From that shared parent directory (call it **`REPO_ROOT`**):
+From the **engine repository root** (submodule must already be checked out):
 
 ```bash
-cd REPO_ROOT
-
 docker build \
   --progress=plain \
-  -f Github_clones/GWAS_calibration_engine/docker/Dockerfile \
+  -f docker/Dockerfile \
   -t LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
   .
 ```
@@ -347,62 +354,42 @@ docker push LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
 
 ### Option B — Cloud Build (no local Docker)
 
-When Docker is **not installed** on your machine (common on shared compute VMs), use **Google Cloud Build** to build and push the image remotely. The challenge is that the **`REPO_ROOT`** may be very large (hundreds of GiB of sumstats, analysis outputs, etc.), and `gcloud builds submit` tars the **entire** source directory before uploading — making it impractical to point at the monorepo root.
-
-**Solution — lightweight staging context:** Create a small temporary directory that mirrors **only** the two `COPY` source paths the Dockerfile needs, add a `cloudbuild.yaml`, and submit that. Total upload is typically under **1 MiB**.
+Because the repo is self-contained, the build context is simply the engine
+repo root. `gcloud builds submit` tars only tracked + submodule files (under a
+few MiB), so no staging trick is needed.
 
 ```bash
-STAGE=$(mktemp -d)
+cd /path/to/GWAS_calibration_engine
+git submodule update --init --recursive
 
-# Mirror only the paths referenced in the Dockerfile
-mkdir -p "$STAGE/Github_clones/GWAS_calibration_engine/docker" \
-         "$STAGE/Python_scripts"
-
-cp REPO_ROOT/Github_clones/GWAS_calibration_engine/docker/Dockerfile \
-   "$STAGE/Github_clones/GWAS_calibration_engine/docker/"
-cp REPO_ROOT/Github_clones/GWAS_calibration_engine/requirements.txt \
-   "$STAGE/Github_clones/GWAS_calibration_engine/"
-cp -r REPO_ROOT/Python_scripts/gwas_calibration_utils \
-   "$STAGE/Python_scripts/"
-
-# Write a minimal Cloud Build config
-cat > "$STAGE/cloudbuild.yaml" <<'YAML'
-steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args:
-      - 'build'
-      - '-f'
-      - 'Github_clones/GWAS_calibration_engine/docker/Dockerfile'
-      - '-t'
-      - 'LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG'
-      - '.'
-images:
-  - 'LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG'
-YAML
-
-# Submit — use a region-located staging bucket if your org policy restricts resources
-gcloud builds submit "$STAGE" \
-  --config "$STAGE/cloudbuild.yaml" \
+# Repo-local cloudbuild.yaml (tracked): docker/cloudbuild.yaml
+gcloud builds submit . \
+  --config docker/cloudbuild.yaml \
+  --substitutions=_TAG=v4 \
   --project PROJECT \
   --region LOCATION \
   --gcs-source-staging-dir gs://YOUR_BUCKET/tmp/cloud_build_staging \
-  --timeout=1200
-
-# Clean up
-rm -rf "$STAGE"
+  --timeout=1800
 ```
 
-Replace **`LOCATION`**, **`PROJECT`**, **`REGISTRY`**, **`TAG`**, and **`YOUR_BUCKET`** with your values. The staging tarball is automatically removed from Cloud Build's source bucket after the build; you may also delete the `gs://` staging prefix manually.
+The staging tarball is automatically removed from Cloud Build's source bucket
+after the build; you may also delete the `gs://` staging prefix manually.
 
-**Why this works:** The Dockerfile's two `COPY` instructions reference **relative** paths (`Github_clones/GWAS_calibration_engine/requirements.txt` and `Python_scripts/gwas_calibration_utils`). By reconstructing **only** those subtrees in a temporary directory, we replicate the layout the Dockerfile expects without touching the hundreds of gigabytes of unrelated data in the monorepo.
+**Why no staging trick:** the Dockerfile's `COPY` paths (`requirements.txt`,
+`gwas_calibration_utils/`) are **relative to the repository root**, and the
+submodule contents are materialised locally by
+`git submodule update --init --recursive`. Cloud Build uses the repo root as
+the build context and never clones anything from GitHub itself — so the
+private submodule remains private without any extra build-time credentials.
 
 ### Troubleshooting
 
 | Symptom | Likely cause |
 |---------|-------------|
-| `COPY` fails for `Python_scripts/…` | Build context does not mirror the Dockerfile's expected tree layout. |
+| `COPY gwas_calibration_utils` finds an empty directory | Submodule not initialised. Run `git submodule update --init --recursive`. |
 | `HTTPError 412: 'us' violates constraint` | Org policy restricts resource locations. Pass **`--region`** and **`--gcs-source-staging-dir`** pointing to a bucket in the allowed region. |
 | Image pull fails on Cromwell | Worker service account lacks Artifact Registry read permission, or URI/tag mismatch. |
+| `gwas-calibration-qc: command not found` inside a container | Image built from a pre-self-contained tag (≤ `:v3`) where the WDL still invoked scripts by absolute path. Use `:v4` or later for console entry points. |
 
 ### Smoke test
 

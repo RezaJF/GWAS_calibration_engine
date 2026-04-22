@@ -17,5 +17,5 @@
   "gwas_calibration_qc.gwaslab_mqq_build":         "38",
   "gwas_calibration_qc.gwaslab_mqq_extra_disk_gb": 10,
 
-  "gwas_calibration_qc.docker":              "LOCATION-docker.pkg.dev/YOUR-PROJECT/YOUR-REGISTRY/gwas-calibration-qc:TAG"
+  "gwas_calibration_qc.docker":              "LOCATION-docker.pkg.dev/YOUR-PROJECT/YOUR-REGISTRY/gwas-calibration-qc:v4"
 }

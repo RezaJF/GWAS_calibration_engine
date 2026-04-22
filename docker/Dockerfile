@@ -1,9 +1,14 @@
-# Build from the long_gwas repository root so the calibration utils are copied unchanged:
-#   docker build -f Github_clones/GWAS_calibration_engine/docker/Dockerfile \
-#     -t YOUR_REGISTRY/gwas-calibration-qc:v1 \
-#     /path/to/long_gwas
+# Self-contained build: the calibration utils are a git submodule at
+# ./gwas_calibration_utils (src-layout). Build from the repository root:
 #
-# Do not edit files under Python_scripts/gwas_calibration_utils here; the COPY is read-only at build time.
+#   git submodule update --init --recursive
+#   docker build -f docker/Dockerfile \
+#     -t LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
+#     .
+#
+# Or, without local Docker, via Cloud Build (see README.md § "Building the
+# container image"): the staged directory is the repo root, and gcloud builds
+# tars only files tracked by git plus the submodule tree.
 
 FROM python:3.11-slim
 
@@ -14,10 +19,15 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY Github_clones/GWAS_calibration_engine/requirements.txt /tmp/calibration_wdl_requirements.txt
+# Install heavy scientific deps first for better Docker layer cache reuse.
+COPY requirements.txt /tmp/calibration_wdl_requirements.txt
 RUN pip install --no-cache-dir -r /tmp/calibration_wdl_requirements.txt
 
-COPY Python_scripts/gwas_calibration_utils /opt/gwas_calibration_utils
-RUN pip install --no-cache-dir -e /opt/gwas_calibration_utils
+# Self-contained: install the utils submodule as a Python package.
+# `pip install '.[all]'` pulls matplotlib, gwaslab, intervaltree, tqdm so the
+# WDL can run the optional diagnostic plots and the GWASlab mqq step.
+COPY gwas_calibration_utils /opt/gwas_calibration_utils
+RUN pip install --no-cache-dir '/opt/gwas_calibration_utils[all]'
 
-ENV PATH="/opt/gwas_calibration_utils:${PATH}"
+# Entry points (gwas-calibration-qc, gwaslab-mqq-plots, build-lead-variants-json)
+# are installed by the setuptools `[project.scripts]` block and resolve via $PATH.

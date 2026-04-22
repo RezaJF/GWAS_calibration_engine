@@ -25,7 +25,7 @@ BASE = "gs://r13-data/fg3_aggregate_pQTLs"
 # Build and push this image (Dockerfile under ../docker) before submit.
 DOCKER = (
     "europe-west1-docker.pkg.dev/finngen-refinery-dev/fg-refinery-registry/"
-    "gwas-calibration-qc:v3"
+    "gwas-calibration-qc:v4"
 )
 
 

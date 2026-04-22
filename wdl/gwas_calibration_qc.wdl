@@ -133,7 +133,7 @@ task run_calibration_one_setup {
     mkdir -p results
     LST="~{write_lines(files_a)}"
 
-    python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
+    gwas-calibration-qc \
       --file-list "$LST" \
       ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
       ~{if defined(cis_json) then "--cis-json " + cis_json else ""} \
@@ -148,7 +148,7 @@ task run_calibration_one_setup {
 
     if ~{gwaslab_mqq_plots}; then
       mkdir -p results/gwaslab_mqq
-      python3 /opt/gwas_calibration_utils/gwaslab_mqq_plots.py \
+      gwaslab-mqq-plots \
         --file-list "$LST" \
         --outdir results/gwaslab_mqq \
         --n-jobs ~{gwaslab_mqq_n_jobs} \
@@ -217,7 +217,7 @@ task run_calibration_two_setups {
     LSTA="~{write_lines(files_a)}"
     LSTB="~{write_lines(files_b)}"
 
-    python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
+    gwas-calibration-qc \
       --file-list "$LSTA" \
       --file-list "$LSTB" \
       ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
@@ -233,7 +233,7 @@ task run_calibration_two_setups {
 
     if ~{gwaslab_mqq_plots}; then
       mkdir -p results/gwaslab_mqq
-      python3 /opt/gwas_calibration_utils/gwaslab_mqq_plots.py \
+      gwaslab-mqq-plots \
         --file-list "$LSTA" \
         --outdir results/gwaslab_mqq \
         --n-jobs ~{gwaslab_mqq_n_jobs} \

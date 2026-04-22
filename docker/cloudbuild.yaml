@@ -1,0 +1,38 @@
+# Cloud Build recipe for the gwas-calibration-qc image.
+#
+# Usage (from the engine repo root, with the gwas_calibration_utils submodule
+# already initialised by `git submodule update --init --recursive`):
+#
+#   gcloud builds submit . \
+#     --config docker/cloudbuild.yaml \
+#     --substitutions=_TAG=v4,_LOCATION=europe-west1,_PROJECT=finngen-refinery-dev,_REGISTRY=fg-refinery-registry \
+#     --project finngen-refinery-dev \
+#     --region europe-west1 \
+#     --gcs-source-staging-dir gs://r13-data/tmp/cloudbuild_staging \
+#     --timeout=1800
+#
+# Defaults below match the FinnGen staging registry. Override via --substitutions.
+
+substitutions:
+  _LOCATION: europe-west1
+  _PROJECT: finngen-refinery-dev
+  _REGISTRY: fg-refinery-registry
+  _IMAGE: gwas-calibration-qc
+  _TAG: v4
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'docker/Dockerfile'
+      - '-t'
+      - '${_LOCATION}-docker.pkg.dev/${_PROJECT}/${_REGISTRY}/${_IMAGE}:${_TAG}'
+      - '.'
+
+images:
+  - '${_LOCATION}-docker.pkg.dev/${_PROJECT}/${_REGISTRY}/${_IMAGE}:${_TAG}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s

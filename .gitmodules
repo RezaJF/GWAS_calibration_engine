@@ -1,0 +1,3 @@
+[submodule "gwas_calibration_utils"]
+	path = gwas_calibration_utils
+	url = https://github.com/RezaJF/gwas_calibration_utils.git
