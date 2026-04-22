@@ -1,0 +1,21 @@
+{
+  "gwas_calibration_qc.paths_setup_a":       "gs://your-bucket/tmp/gwas_calibration_smoke/input_sumstats_paths_smoke_2files.txt",
+  "gwas_calibration_qc.two_setups":          false,
+  "gwas_calibration_qc.setup_label_a":       "smoke_2files",
+  "gwas_calibration_qc.setup_label_b":       "_unused",
+  "gwas_calibration_qc.protein_id_mode":     "first_segment",
+
+  "gwas_calibration_qc.n_jobs":              2,
+  "gwas_calibration_qc.memory_gb":           16,
+  "gwas_calibration_qc.lead_window_bp":      1500000,
+  "gwas_calibration_qc.diagnostic_plots":    false,
+  "gwas_calibration_qc.top_n_trans":         10,
+  "gwas_calibration_qc.probability_rho":     1.0,
+
+  "gwas_calibration_qc.gwaslab_mqq_plots":         true,
+  "gwas_calibration_qc.gwaslab_mqq_n_jobs":        2,
+  "gwas_calibration_qc.gwaslab_mqq_build":         "38",
+  "gwas_calibration_qc.gwaslab_mqq_extra_disk_gb": 10,
+
+  "gwas_calibration_qc.docker":              "LOCATION-docker.pkg.dev/YOUR-PROJECT/YOUR-REGISTRY/gwas-calibration-qc:TAG"
+}

@@ -1,0 +1,8 @@
+{
+  "final_workflow_outputs_dir":  "gs://your-bucket/tmp/gwas_calibration_smoke/cromwell_final_outputs",
+  "final_workflow_outputs_mode": "copy",
+  "google_labels": {
+    "product": "your-product-label",
+    "calib_mqq_smoke": "true"
+  }
+}

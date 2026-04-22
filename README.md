@@ -140,7 +140,9 @@ flowchart TB
   TGZ --> GCS
 ```
 
+### GWASlab mqq (Manhattan and MAF-stratified QQ)
 
+When **`gwaslab_mqq_plots`** is **true** (default in [`wdl/gwas_calibration_qc.wdl`](wdl/gwas_calibration_qc.wdl)), the same task runs **`gwaslab_mqq_plots.py`** (installed as **`/opt/gwas_calibration_utils/gwaslab_mqq_plots.py`** in the image) after the main calibration pass, using the **localised** sumstat paths for **setup A** (in two-setup mode, setup A’s list; two-setup runs mqq for setup A only). The script uses **GWASlab** **`gl.Sumstats`**, then **`plot_mqq`** with **`mode="mqq"`**, **`stratified=True`**, **`cut=14`**, **`skip=3`**, **`marker_size=(5,10)`**, in line with **`manhattan_plot_generator.py`**. Outputs are **`results/gwaslab_mqq/*_gwaslab_mqq.png`**, which are then rolled into **`calibration_outputs.tgz`**. The image must include **`gwaslab`** and **matplotlib** (see **`requirements.txt`**; use tag **v3+** for builds that include these dependencies). Increase **`gwaslab_mqq_extra_disk_gb`** and **`memory_gb`** for large full-chunk runs.
 
 **Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask (**default `lead_window_bp` = 1 500 000** → **±1.5 Mb** on the lead chromosome, **3 Mb** total cis-like span). Override via **`gwas_calibration_qc.lead_window_bp`** in inputs JSON. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
 
@@ -162,7 +164,8 @@ GWAS_calibration_engine/
 │   ├── gwas_calibration_qc.wdl
 │   ├── gwas_calibration_qc.example.json
 │   ├── gwas_calibration_qc_scattered.wdl
-│   └── gwas_calibration_qc_scattered.example.json
+│   ├── gwas_calibration_qc_scattered.example.json
+│   └── fg3_input_sumstats_mqq/   (emit_chunk_input_jsons.py, chunk Cromwell JSONs, submit_all_chunks.sh)
 ├── requirements.txt
 └── README.md
 ```
@@ -277,6 +280,10 @@ The Python engine supports **`--phase full`** (default), **`--phase scatter`**, 
 | `diagnostic_plots`               | `Boolean`       | Emit per-trait diagnostic figures when dependencies are present in the image.                             |
 | `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality).                       |
 | `lead_window_bp`                 | `Int`           | Half-width in bp around each lead on the lead chromosome (default **1500000** → ±1.5 Mb, **3 Mb** total span). **0** disables lead masking while still loading leads. |
+| `gwaslab_mqq_plots`              | `Boolean`       | After calibration, run GWASlab **mqq** plots per localised sumstats file; outputs under `results/gwaslab_mqq/`. |
+| `gwaslab_mqq_n_jobs`             | `Int`           | Process pool size for mqq (default **2**; mqq is memory heavy). |
+| `gwaslab_mqq_build`              | `String`        | GWASlab genome build (default **`38`**, GRCh38). |
+| `gwaslab_mqq_extra_disk_gb`     | `Int`           | Added to the worker SSD budget when mqq is enabled. |
 | `docker`                         | `String`        | Full container image URI (including tag).                                                                 |
 
 ---
@@ -295,6 +302,7 @@ Cromwell materialises **declared output files** (and may copy them to a bucket i
 | `calibration_compare.tiered_report.txt` | Human-readable tiered KPI report.                               |
 | `gwas_calibration_qc.log`               | Execution log.                                                  |
 | `results/lead_variants.json`            | Present when leads were auto-generated or written to that path. |
+| `results/gwaslab_mqq/*_gwaslab_mqq.png` | **When** `gwaslab_mqq_plots` is **true**: one Manhattan + MAF-stratified QQ (mqq) panel per trait. |
 
 ### Scatter–gather workflow (`gwas_calibration_qc_scattered.wdl`)
 

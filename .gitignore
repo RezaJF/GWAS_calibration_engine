@@ -1,8 +1,18 @@
 # -----------------------------------------------------------------------------
-# Chunk-specific example (internal bucket URIs, path lists, org Cromwell options)
+# Run-specific / internal chunk configurations and reports
 # Not included in general public releases — keep local or in a private fork.
+#
+# Rule of thumb: track templates / scripts / READMEs that are reusable; ignore
+# anything that embeds internal bucket URIs, per-workflow IDs, or runtime logs.
 # -----------------------------------------------------------------------------
 wdl/chunk_0001_0500/
+wdl/fg3_input_sumstats_mqq/*.calibration_qc.inputs.json
+wdl/fg3_input_sumstats_mqq/*.cromwell_workflow_options.json
+wdl/fg3_input_sumstats_mqq/SUBMISSION_REPORT*.md
+wdl/fg3_input_sumstats_mqq/submit_all_chunks.log*
+wdl/smoke_test/smoke_2files.calibration_qc.inputs.json
+wdl/smoke_test/smoke_2files.cromwell_workflow_options.json
+wdl/smoke_test/SUBMISSION_REPORT*.md
 
 # -----------------------------------------------------------------------------
 # Python

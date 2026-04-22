@@ -34,6 +34,13 @@ workflow gwas_calibration_qc {
     # Half-width around each lead (bp): exclude |pos - lead_pos| <= this on the lead chromosome (default ±1.5 Mb → 3 Mb cis-like span).
     Int    lead_window_bp = 1500000
 
+    # gwaslab Manhattan+MAF-stratified QQ (mqq) figures for each localised sumstats file; written under results/gwaslab_mqq/
+    Boolean gwaslab_mqq_plots = true
+    Int     gwaslab_mqq_n_jobs = 2
+    String  gwaslab_mqq_build = "38"
+    # Extra local SSD when gwaslab mqq is enabled (plots are I/O- and memory-heavy).
+    Int     gwaslab_mqq_extra_disk_gb = 120
+
     String docker
   }
 
@@ -53,6 +60,10 @@ workflow gwas_calibration_qc {
         top_n_trans        = top_n_trans,
         probability_rho    = probability_rho,
         lead_window_bp     = lead_window_bp,
+        gwaslab_mqq_plots   = gwaslab_mqq_plots,
+        gwaslab_mqq_n_jobs  = gwaslab_mqq_n_jobs,
+        gwaslab_mqq_build  = gwaslab_mqq_build,
+        gwaslab_mqq_extra_disk_gb = gwaslab_mqq_extra_disk_gb,
         docker             = docker
     }
   }
@@ -71,6 +82,10 @@ workflow gwas_calibration_qc {
         top_n_trans        = top_n_trans,
         probability_rho    = probability_rho,
         lead_window_bp     = lead_window_bp,
+        gwaslab_mqq_plots   = gwaslab_mqq_plots,
+        gwaslab_mqq_n_jobs  = gwaslab_mqq_n_jobs,
+        gwaslab_mqq_build  = gwaslab_mqq_build,
+        gwaslab_mqq_extra_disk_gb = gwaslab_mqq_extra_disk_gb,
         docker             = docker
     }
   }
@@ -100,23 +115,28 @@ task run_calibration_one_setup {
     Int     top_n_trans
     Float   probability_rho
     Int     lead_window_bp
+    Boolean gwaslab_mqq_plots
+    Int     gwaslab_mqq_n_jobs
+    String  gwaslab_mqq_build
+    Int     gwaslab_mqq_extra_disk_gb
     String  docker
   }
 
   Array[File] files_a = read_lines(paths_setup_a)
 
   Int disk_pad_gb = 20
-  Int disk_gb = ceil(size(files_a, "GB") + disk_pad_gb)
+  Int disk_gb = if gwaslab_mqq_plots then ceil(size(files_a, "GB") + disk_pad_gb + gwaslab_mqq_extra_disk_gb) else ceil(size(files_a, "GB") + disk_pad_gb)
 
   command <<<
     set -euo pipefail
 
     mkdir -p results
+    LST="~{write_lines(files_a)}"
 
     python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
-      --file-list ~{write_lines(files_a)} \
+      --file-list "$LST" \
       ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
-      ~{"--cis-json " + cis_json} \
+      ~{if defined(cis_json) then "--cis-json " + cis_json else ""} \
       --setup-labels "~{setup_label_a}" "_unused" \
       --protein-id-mode ~{protein_id_mode} \
       --outdir results \
@@ -125,6 +145,16 @@ task run_calibration_one_setup {
       --top-n-trans ~{top_n_trans} \
       --probability-rho ~{probability_rho} \
       --lead-window-bp ~{lead_window_bp}
+
+    if ~{gwaslab_mqq_plots}; then
+      mkdir -p results/gwaslab_mqq
+      python3 /opt/gwas_calibration_utils/gwaslab_mqq_plots.py \
+        --file-list "$LST" \
+        --outdir results/gwaslab_mqq \
+        --n-jobs ~{gwaslab_mqq_n_jobs} \
+        --build ~{gwaslab_mqq_build} \
+        --log-level INFO
+    fi
 
     tar -czf calibration_outputs.tgz -C results .
   >>>
@@ -166,6 +196,10 @@ task run_calibration_two_setups {
     Int     top_n_trans
     Float   probability_rho
     Int     lead_window_bp
+    Boolean gwaslab_mqq_plots
+    Int     gwaslab_mqq_n_jobs
+    String  gwaslab_mqq_build
+    Int     gwaslab_mqq_extra_disk_gb
     String  docker
   }
 
@@ -173,18 +207,21 @@ task run_calibration_two_setups {
   Array[File] files_b = read_lines(paths_setup_b)
 
   Int disk_pad_gb = 20
-  Int disk_gb = ceil(size(files_a, "GB") + size(files_b, "GB") + disk_pad_gb)
+  Int disk_extra_mqq = if gwaslab_mqq_plots then gwaslab_mqq_extra_disk_gb else 0
+  Int disk_gb = ceil(size(files_a, "GB") + size(files_b, "GB") + disk_pad_gb + disk_extra_mqq)
 
   command <<<
     set -euo pipefail
 
     mkdir -p results
+    LSTA="~{write_lines(files_a)}"
+    LSTB="~{write_lines(files_b)}"
 
     python3 /opt/gwas_calibration_utils/gwas_calibration_qc.py \
-      --file-list ~{write_lines(files_a)} \
-      --file-list ~{write_lines(files_b)} \
+      --file-list "$LSTA" \
+      --file-list "$LSTB" \
       ~{if defined(lead_variants_json) then "--lead-variants-json " + lead_variants_json else "--lead-variants-json results/lead_variants.json"} \
-      ~{"--cis-json " + cis_json} \
+      ~{if defined(cis_json) then "--cis-json " + cis_json else ""} \
       --setup-labels "~{setup_label_a}" "~{setup_label_b}" \
       --protein-id-mode ~{protein_id_mode} \
       --outdir results \
@@ -193,6 +230,16 @@ task run_calibration_two_setups {
       --top-n-trans ~{top_n_trans} \
       --probability-rho ~{probability_rho} \
       --lead-window-bp ~{lead_window_bp}
+
+    if ~{gwaslab_mqq_plots}; then
+      mkdir -p results/gwaslab_mqq
+      python3 /opt/gwas_calibration_utils/gwaslab_mqq_plots.py \
+        --file-list "$LSTA" \
+        --outdir results/gwaslab_mqq \
+        --n-jobs ~{gwaslab_mqq_n_jobs} \
+        --build ~{gwaslab_mqq_build} \
+        --log-level INFO
+    fi
 
     tar -czf calibration_outputs.tgz -C results .
   >>>
