@@ -23,8 +23,8 @@ The workflow does **not** replace association testing, fine-mapping, or colocali
 
 The workflow parameter **`lead_window_bp`** is a **half-width in base pairs** on the **lead chromosome only** (the chromosome where the trait’s lead variant lies). Masking is applied **symmetrically** around the lead’s genomic position:
 
-- **Excluded interval (inclusive bounds):**  
-  \[ **lead_pos − lead_window_bp**, **lead_pos + lead_window_bp** \]  
+- **Excluded interval (inclusive bounds):**
+  \[ **lead_pos − lead_window_bp**, **lead_pos + lead_window_bp** \]
   on that chromosome.
 - **Default:** `lead_window_bp = 1 500 000` → **±1.5 Mb** around the lead → **3 Mb** contiguous span.
 - **Worked example:** Suppose the lead variant is **chr1:50 000 000** (GRCh38-style coordinates) and `lead_window_bp = 1 500 000`. Then every variant on **chr1** with position in **48 500 000–51 500 000** is **excluded** from the *trans* calibration set. Variants on other chromosomes are **not** affected by this rule (cis JSON handles separate locus exclusions).
@@ -434,6 +434,8 @@ Some Cromwell clients require **`google_labels`** (including **`product`**) in t
 ---
 
 ## Licence
-
-- **This repository** (WDL, Docker build files, scripts under `scripts/`, and this README): **[MIT Licence](LICENSE)** — see **`LICENSE`** for the full text.
-- **gwas-calibration-utils** (vendored or installed from source into the image): **MIT** under that package’s own copyright and licence notice; retain those notices when redistributing source or images that bundle the package.
+- **This repository** (WDL, Docker build files, scripts under `scripts/`, and this README):
+  **Copyright © 2026 Reza Jabal, PhD. All rights reserved.**
+  Licensed under the **[PolyForm Noncommercial Licence 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)** — see **`LICENSE`** for the full text.
+  You may use, copy, modify, and redistribute this work **for non-commercial purposes only**, provided that clear attribution to **Reza Jabal, PhD** is retained in all copies and derivative works. **Commercial use of any kind requires prior written permission from the copyright holder.**
+- **gwas-calibration-utils** (installed from source into the image; Reza Jabal, PhD is the copyright holder): distributed under its own **MIT** licence and copyright notice. That notice is **not** altered or superseded by the licence above; retain it when redistributing source or images that bundle the package.
