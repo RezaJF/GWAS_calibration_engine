@@ -2,7 +2,7 @@
 
 A reproducible **[WDL](https://openwdl.org/)** workflow for large-scale **statistical calibration quality control** of genome-wide association study (GWAS) or protein quantitative trait locus (pQTL) **summary statistics** on **Google Cloud Platform**. The workflow localises per-trait sumstats from object storage, runs a containerised calibration analysis in parallel where configured, and packages metrics, reports, and optional diagnostic figures for downstream triage or method comparison.
 
-**Licence:** The **WDL**, **Dockerfile**, **helper scripts**, and **documentation** in this repository are released under the **[MIT Licence](LICENSE)**. The bundled **gwas-calibration-utils** dependency remains under its own **MIT** terms (see that package’s metadata).
+**Licence:** This repository is released under the **[Reza Jabal Non-Commercial Licence v1.0](LICENSE)**. The licence covers the **WDL**, **Dockerfile**, **helper scripts**, **documentation**, and the bundled **gwas-calibration-utils** version distributed with this repository. Reza Jabal, PhD is the copyright holder and licensor of **gwas-calibration-utils**. The package has not been publicly released; if a specific earlier copy was provided by the Licensor under MIT, that copy remains under its prior MIT terms.
 
 This repository provides **orchestration only** (WDL, Docker build metadata, and operational examples). The numerical methods are implemented in the **gwas-calibration-utils** Python package, which is installed inside the workflow container image.
 
@@ -446,34 +446,40 @@ Some Cromwell clients require `**google_labels`** (including `**product**`) in t
 
 ## Attribution
 
-- **Numerical methodology and metric definitions:** **gwas-calibration-utils** (Python; MIT-licensed in its source metadata).
+- **Numerical methodology and metric definitions:** **gwas-calibration-utils** (Python; the bundled version is covered by the repository licence below).
 - **Path-list and object-storage patterns** follow common practice for large-scale GWAS execution on GCS-backed Cromwell.
 
 ---
 
 ## Licence
 
+Reza Jabal Non-Commercial Licence v1.0
 
 Copyright © 2026 Reza Jabal, PhD. All rights reserved.
 
 1. DEFINITIONS
+
    1.1 "The Work" means the contents of this repository covered by this
        Licence, including but not limited to the WDL workflow files, Docker
-       build files, scripts under `scripts/`, the README, and any other
-       files in this repository for which Reza Jabal, PhD is the copyright
-       holder. The Work does NOT include third-party components that
-       carry their own copyright notice and licence (for example,
-       `gwas-calibration-utils`, which is distributed under the MIT
-       Licence and remains governed by its own notice).
-   1.2 "Licensor" means Reza Jabal, PhD, the copyright holder of the Work.
+       build files, scripts under `scripts/`, the README, the version of
+       the `gwas-calibration-utils` package distributed with this
+       repository (whether installed from source into the Docker image
+       or otherwise bundled), and any other files in this repository
+       for which Reza Jabal, PhD is the copyright holder.
+
+   1.2 "Licensor" means Reza Jabal, PhD, the copyright holder and
+       licensor of the Work, including `gwas-calibration-utils`.
+
    1.3 "You" means any individual or legal entity exercising rights under
        this Licence.
+
    1.4 "Non-Commercial Use" means use of the Work that is not primarily
        intended for or directed toward commercial advantage or monetary
        compensation. Permitted Non-Commercial Use includes personal use,
        academic research, classroom teaching, and use by registered
        non-profit organisations in furtherance of their non-profit
        mission.
+
    1.5 "Commercial Use" means any use of the Work that is not
        Non-Commercial Use. Commercial Use includes, without limitation:
        (a) use by, for, or on behalf of a for-profit entity in the
@@ -491,6 +497,7 @@ Copyright © 2026 Reza Jabal, PhD. All rights reserved.
            licensed to third parties.
 
 2. GRANT OF LICENCE
+
    Subject to Your full compliance with the terms and conditions of this
    Licence, the Licensor grants You a worldwide, royalty-free,
    non-exclusive, non-transferable, non-sublicensable, revocable licence
@@ -499,7 +506,9 @@ Copyright © 2026 Reza Jabal, PhD. All rights reserved.
    Non-Commercial Use.
 
 3. CONDITIONS
+
    The licence in Section 2 is conditional on ALL of the following:
+
    3.1 ATTRIBUTION. You must retain, in all copies, modifications, and
        derivative works of the Work, the following: (a) the copyright
        notice "Copyright © 2026 Reza Jabal, PhD. All rights reserved.";
@@ -508,65 +517,83 @@ Copyright © 2026 Reza Jabal, PhD. All rights reserved.
        publication, presentation, report, or public communication that
        presents results obtained using the Work, You must cite Reza
        Jabal, PhD as the author of the Work.
+
    3.2 NOTICE OF MODIFICATION. If You modify the Work, You must mark
        Your modifications clearly and state that the modified files
        have been changed from the original.
+
    3.3 NO REMOVAL. You must not remove, obscure, or alter any copyright,
        patent, trademark, attribution, or licence notices contained in
-       the Work, including the third-party MIT notice for
-       `gwas-calibration-utils`.
+       the Work.
+
    3.4 NO SUBLICENSING. You may not sublicense the Work. Each recipient
        of the Work or any derivative receives their rights directly
        from the Licensor under this Licence.
+
    3.5 NO ADDITIONAL RESTRICTIONS. You may not impose any additional
        legal terms or technological measures on recipients that
        restrict the exercise of the rights granted under this Licence.
 
 4. PROHIBITION ON COMMERCIAL USE
+
    4.1 Commercial Use of the Work, in whole or in part, is expressly
        PROHIBITED without the prior written permission of the Licensor.
+
    4.2 Permission for Commercial Use, if granted, will be set out in a
        separate written agreement signed by the Licensor and may be
        subject to fees, royalties, and additional terms.
-   4.3 To request permission for Commercial Use, contact:
-       Reza Jabal, PhD — please open an issue in this repository
-       requesting contact details, or use the contact information
-       provided in the repository README.
+
+   4.3 To request permission for Commercial Use, contact Reza Jabal,
+       PhD using the contact information provided in this repository's
+       README, or by opening an issue in this repository requesting
+       contact details.
 
 5. RESERVATION OF RIGHTS
+
    All rights not expressly granted by this Licence are reserved by the
    Licensor. No rights are granted by implication, estoppel, or
    otherwise. No patent licence is granted under this Licence.
 
-6. THIRD-PARTY COMPONENTS
-   The Work depends on, bundles, or is distributed alongside third-party
-   components, including but not limited to `gwas-calibration-utils`,
-   which are governed by their own copyright notices and licences (the
-   MIT Licence in the case of `gwas-calibration-utils`). Nothing in this
-   Licence modifies, supersedes, or extinguishes the rights or
-   obligations under those third-party licences. You must comply with
-   them in addition to this Licence and must retain their notices when
-   redistributing source or container images that include them.
+6. PRIOR MIT-LICENSED COPIES OF `gwas-calibration-utils`
+
+   6.1 `gwas-calibration-utils` has not been publicly released. If the
+       Licensor provided a specific earlier version of
+       `gwas-calibration-utils` to any person under the MIT Licence,
+       nothing in this Licence revokes, modifies, or limits the rights
+       granted under that prior MIT licence with respect to that
+       specific version.
+
+   6.2 The version of `gwas-calibration-utils` distributed with this
+       repository (including the version installed into the Docker
+       image built from this repository) is part of the Work as
+       defined in Section 1.1 and is governed exclusively by this
+       Licence. Combining, repackaging, or redistributing this version
+       with materials obtained under prior MIT-licensed copies does not
+       place this version under the MIT Licence.
 
 7. TERMINATION
+
    7.1 This Licence and the rights granted under it terminate
        automatically and immediately if You breach any of its terms.
+
    7.2 Upon termination, You must cease all use of the Work and destroy
        all copies in Your possession or control, except that copies
        lawfully distributed to third parties prior to termination may
        remain with those third parties subject to this Licence.
+
    7.3 Sections 5, 6, 8, 9, and 10 survive termination.
 
 8. NO WARRANTY
-   THE WORK IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY
-   OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+
+   THE WORK IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY OF
+   ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
    WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
    TITLE, AND NON-INFRINGEMENT. THE LICENSOR DOES NOT WARRANT THAT THE
    WORK WILL BE ERROR-FREE, ACCURATE, OR SUITABLE FOR ANY CLINICAL,
-   DIAGNOSTIC, OR OTHER REGULATED USE. THE WORK IS NOT A MEDICAL
-   DEVICE.
+   DIAGNOSTIC, OR OTHER REGULATED USE. THE WORK IS NOT A MEDICAL DEVICE.
 
 9. LIMITATION OF LIABILITY
+
    TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL
    THE LICENSOR BE LIABLE TO YOU OR ANY THIRD PARTY ON ANY LEGAL THEORY
    (INCLUDING, WITHOUT LIMITATION, NEGLIGENCE) FOR ANY DIRECT, INDIRECT,
@@ -577,14 +604,19 @@ Copyright © 2026 Reza Jabal, PhD. All rights reserved.
    ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 10. GENERAL
+
     10.1 If any provision of this Licence is held to be unenforceable,
          that provision shall be reformed only to the extent necessary
          to make it enforceable, and the remaining provisions shall
          remain in full force and effect.
+
     10.2 Failure by the Licensor to enforce any provision of this
          Licence shall not be a waiver of future enforcement of that
          or any other provision.
+
     10.3 This Licence constitutes the entire agreement between You and
          the Licensor with respect to the Work and supersedes any prior
          understandings or agreements regarding the Work.
+
+END OF LICENCE
 
