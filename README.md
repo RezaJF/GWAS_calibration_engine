@@ -10,7 +10,7 @@ This repository provides **orchestration only** (WDL, Docker build metadata, and
 
 ## Purpose and scope
 
-**Calibration** here means checking whether *p*-values on variants that are **not** expected to carry a true genetic signal behave like **null *p*-values** — i.e. approximately **uniform on (0, 1)** after appropriate masking. Strong cis associations and lead signals violate that null on nearby variants; the analysis therefore **masks** (excludes) configurable **cis regions** (from optional JSON) and a **symmetric window around each lead variant** (workflow default **±1.5 Mb** on the lead chromosome, **3 Mb** total — input **`lead_window_bp`**) before evaluating the *trans* remainder.
+**Calibration** here means checking whether *p*-values on variants that are **not** expected to carry a true genetic signal behave like **null *p*-values** — i.e. approximately **uniform on (0, 1)** after appropriate masking. Strong cis associations and lead signals violate that null on nearby variants; the analysis therefore **masks** (excludes) configurable **cis regions** (from optional JSON) and a **symmetric window around each lead variant** (workflow default **±1.5 Mb** on the lead chromosome, **3 Mb** total — input `**lead_window_bp`**) before evaluating the *trans* remainder.
 
 Typical uses:
 
@@ -21,14 +21,14 @@ The workflow does **not** replace association testing, fine-mapping, or colocali
 
 ### Lead-variant cis-like window (geometry)
 
-The workflow parameter **`lead_window_bp`** is a **half-width in base pairs** on the **lead chromosome only** (the chromosome where the trait’s lead variant lies). Masking is applied **symmetrically** around the lead’s genomic position:
+The workflow parameter `**lead_window_bp*`* is a **half-width in base pairs** on the **lead chromosome only** (the chromosome where the trait’s lead variant lies). Masking is applied **symmetrically** around the lead’s genomic position:
 
 - **Excluded interval (inclusive bounds):**
-  \[ **lead_pos − lead_window_bp**, **lead_pos + lead_window_bp** \]
-  on that chromosome.
+ **lead_pos − lead_window_bp**, **lead_pos + lead_window_bp**
+on that chromosome.
 - **Default:** `lead_window_bp = 1 500 000` → **±1.5 Mb** around the lead → **3 Mb** contiguous span.
 - **Worked example:** Suppose the lead variant is **chr1:50 000 000** (GRCh38-style coordinates) and `lead_window_bp = 1 500 000`. Then every variant on **chr1** with position in **48 500 000–51 500 000** is **excluded** from the *trans* calibration set. Variants on other chromosomes are **not** affected by this rule (cis JSON handles separate locus exclusions).
-- **`lead_window_bp = 0`:** Lead coordinates may still be loaded or auto-generated, but **no** lead-adjacent SNPs are removed; only cis JSON (if any) applies.
+- `**lead_window_bp = 0`:** Lead coordinates may still be loaded or auto-generated, but **no** lead-adjacent SNPs are removed; only cis JSON (if any) applies.
 
 ---
 
@@ -140,11 +140,13 @@ flowchart TB
   TGZ --> GCS
 ```
 
+
+
 ### GWASlab mqq (Manhattan and MAF-stratified QQ)
 
-When **`gwaslab_mqq_plots`** is **true** (default in [`wdl/gwas_calibration_qc.wdl`](wdl/gwas_calibration_qc.wdl)), the same task runs **`gwaslab_mqq_plots.py`** (installed as **`/opt/gwas_calibration_utils/gwaslab_mqq_plots.py`** in the image) after the main calibration pass, using the **localised** sumstat paths for **setup A** (in two-setup mode, setup A’s list; two-setup runs mqq for setup A only). The script uses **GWASlab** **`gl.Sumstats`**, then **`plot_mqq`** with **`mode="mqq"`**, **`stratified=True`**, **`cut=14`**, **`skip=3`**, **`marker_size=(5,10)`**, in line with **`manhattan_plot_generator.py`**. Outputs are **`results/gwaslab_mqq/*_gwaslab_mqq.png`**, which are then rolled into **`calibration_outputs.tgz`**. The image must include **`gwaslab`** and **matplotlib** (see **`requirements.txt`**; use tag **v3+** for builds that include these dependencies). Increase **`gwaslab_mqq_extra_disk_gb`** and **`memory_gb`** for large full-chunk runs.
+When `**gwaslab_mqq_plots**` is **true** (default in `[wdl/gwas_calibration_qc.wdl](wdl/gwas_calibration_qc.wdl)`), the same task runs `**gwaslab_mqq_plots.py`** (installed as `**/opt/gwas_calibration_utils/gwaslab_mqq_plots.py**` in the image) after the main calibration pass, using the **localised** sumstat paths for **setup A** (in two-setup mode, setup A’s list; two-setup runs mqq for setup A only). The script uses **GWASlab** `**gl.Sumstats`**, then `**plot_mqq**` with `**mode="mqq"**`, `**stratified=True**`, `**cut=14**`, `**skip=3**`, `**marker_size=(5,10)**`, in line with `**manhattan_plot_generator.py**`. Outputs are `**results/gwaslab_mqq/*_gwaslab_mqq.png**`, which are then rolled into `**calibration_outputs.tgz**`. The image must include `**gwaslab**` and **matplotlib** (see `**requirements.txt`**; use tag **v3+** for builds that include these dependencies). Increase `**gwaslab_mqq_extra_disk_gb`** and `**memory_gb**` for large full-chunk runs.
 
-**Lead variants:** If the workflow input **`lead_variants_json`** is **omitted**, the task passes an output path under **`results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask (**default `lead_window_bp` = 1 500 000** → **±1.5 Mb** on the lead chromosome, **3 Mb** total cis-like span). Override via **`gwas_calibration_qc.lead_window_bp`** in inputs JSON. Supply **`lead_variants_json`** only when you require a **fixed**, pre-computed lead file from object storage.
+**Lead variants:** If the workflow input `**lead_variants_json`** is **omitted**, the task passes an output path under `**results/`** that **does not exist yet**. The engine **creates** it by scanning the localised sumstats and taking the **genome-wide minimum *p*-value** row per trait, then applies the lead-window mask (**default `lead_window_bp` = 1 500 000** → **±1.5 Mb** on the lead chromosome, **3 Mb** total cis-like span). Override via `**gwas_calibration_qc.lead_window_bp`** in inputs JSON. Supply `**lead_variants_json**` only when you require a **fixed**, pre-computed lead file from object storage.
 
 **Cis regions:** Optional JSON defines per-trait intervals and/or explicit positions to exclude before metrics.
 
@@ -170,7 +172,7 @@ GWAS_calibration_engine/
 └── README.md
 ```
 
-Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see **`.gitignore`**). Build path lists with **`scripts/generate_path_lists.py`** and start from **`wdl/gwas_calibration_qc.example.json`** or **`wdl/gwas_calibration_qc_scattered.example.json`**.
+Chunk-specific path lists and Cromwell inputs that point at internal buckets are **not** tracked in this repository (see `**.gitignore`**). Build path lists with `**scripts/generate_path_lists.py**` and start from `**wdl/gwas_calibration_qc.example.json**` or `**wdl/gwas_calibration_qc_scattered.example.json**`.
 
 ---
 
@@ -178,28 +180,30 @@ Chunk-specific path lists and Cromwell inputs that point at internal buckets are
 
 Two orchestration modes exist:
 
-| Mode | WDL | Cromwell jobs (typical) | When to use |
-|------|-----|---------------------------|-------------|
-| **Single task** | [`wdl/gwas_calibration_qc.wdl`](wdl/gwas_calibration_qc.wdl) | **1** heavy VM per workflow run | Smaller batches, simpler ops |
-| **Scatter–gather** | [`wdl/gwas_calibration_qc_scattered.wdl`](wdl/gwas_calibration_qc_scattered.wdl) | **1** split + **K** shard VMs + **1** gather | Large batches (e.g. thousands of traits), smaller disk per VM, higher wall-clock parallelism |
+
+| Mode               | WDL                                                                              | Cromwell jobs (typical)                      | When to use                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Single task**    | `[wdl/gwas_calibration_qc.wdl](wdl/gwas_calibration_qc.wdl)`                     | **1** heavy VM per workflow run              | Smaller batches, simpler ops                                                                 |
+| **Scatter–gather** | `[wdl/gwas_calibration_qc_scattered.wdl](wdl/gwas_calibration_qc_scattered.wdl)` | **1** split + **K** shard VMs + **1** gather | Large batches (e.g. thousands of traits), smaller disk per VM, higher wall-clock parallelism |
+
 
 ### Single-task workflow (`gwas_calibration_qc.wdl`)
 
-This variant **does not** use Cromwell **`scatter`** over traits. Each successful submission runs **one** backend job: **`run_calibration_one_setup`** or **`run_calibration_two_setups`**. Every line in **`paths_setup_a`** (and **`paths_setup_b`** when comparing) is localised to **that same worker**; all traits share one machine’s CPU, RAM, and disk.
+This variant **does not** use Cromwell `**scatter`** over traits. Each successful submission runs **one** backend job: `**run_calibration_one_setup`** or `**run_calibration_two_setups**`. Every line in `**paths_setup_a**` (and `**paths_setup_b**` when comparing) is localised to **that same worker**; all traits share one machine’s CPU, RAM, and disk.
 
-**`n_jobs` (intra-task parallelism):** Passed to the calibration engine and set as **`runtime.cpu`**. The engine uses a **process pool** of at most **`n_jobs`** concurrent trait workers. This does **not** multiply Cromwell jobs.
+`**n_jobs` (intra-task parallelism):** Passed to the calibration engine and set as `**runtime.cpu`**. The engine uses a **process pool** of at most `**n_jobs`** concurrent trait workers. This does **not** multiply Cromwell jobs.
 
-**Disk:** **`ceil`** of total localised input size (both setups when comparing) plus **20 GiB** padding.
+**Disk:** `**ceil`** of total localised input size (both setups when comparing) plus **20 GiB** padding.
 
 ### Scatter–gather workflow (`gwas_calibration_qc_scattered.wdl`)
 
 Use this when you want **many Cromwell shards**, each processing a **subset** of the master path list(s), while still computing **batch-global** composite scores and quality probabilities **once** at the end.
 
-**`n_shards` (Cromwell-level parallelism):** The **`split_path_lists`** task splits **`master_paths_setup_a`** (and **`master_paths_setup_b`** when **`two_setups`**) into **`min(n_shards, N)`** shards, where **N** is the number of lines. Each shard is one **`compute_shard_metrics`** call running **`gwas-calibration-qc --phase scatter`**, which writes **`calibration_compare.partial_metrics.csv`** (raw per-trait metrics **only**).
+`**n_shards` (Cromwell-level parallelism):** The `**split_path_lists`** task splits `**master_paths_setup_a**` (and `**master_paths_setup_b**` when `**two_setups**`) into `**min(n_shards, N)**` shards, where **N** is the number of lines. Each shard is one `**compute_shard_metrics`** call running `**gwas-calibration-qc --phase scatter**`, which writes `**calibration_compare.partial_metrics.csv**` (raw per-trait metrics **only**).
 
-**`n_jobs` (still intra-task):** Within each shard VM, **`n_jobs`** controls the Python process pool size for traits **in that shard** (same semantics as the single-task workflow).
+`**n_jobs` (still intra-task):** Within each shard VM, `**n_jobs`** controls the Python process pool size for traits **in that shard** (same semantics as the single-task workflow).
 
-**Gather:** After all shards succeed, **`aggregate_and_score`** runs **`--phase gather`**, merges every partial CSV, runs global **`calibration_score`**, **median/MAD** standardisation, and **`quality_prob_good`**, then emits the same final **`calibration_compare.metrics.long.csv`**, **`summary.json`**, and **`tiered_report.txt`** as a full single-batch run.
+**Gather:** After all shards succeed, `**aggregate_and_score`** runs `**--phase gather**`, merges every partial CSV, runs global `**calibration_score**`, **median/MAD** standardisation, and `**quality_prob_good`**, then emits the same final `**calibration_compare.metrics.long.csv**`, `**summary.json**`, and `**tiered_report.txt**` as a full single-batch run.
 
 **Pairing (two setups):** Master lists must be **line-aligned**; the splitter preserves row pairing within each shard.
 
@@ -237,96 +241,108 @@ flowchart LR
   PK --> G
 ```
 
+
+
 ### CLI phases (container / local)
 
-The Python engine supports **`--phase full`** (default), **`--phase scatter`**, and **`--phase gather`**. The **same** container image is used for scatter and gather; **rebuild** only when the **gwas-calibration-utils** code changes.
+The Python engine supports `**--phase full**` (default), `**--phase scatter**`, and `**--phase gather**`. The **same** container image is used for scatter and gather; **rebuild** only when the **gwas-calibration-utils** code changes.
 
-| Phase | Role |
-|-------|------|
-| **`full`** | End-to-end single batch (current default behaviour). |
-| **`scatter`** | Per-shard raw metrics → **`calibration_compare.partial_metrics.csv`**; no summary/tiered report. |
-| **`gather`** | **`--partial-csv-list`** (and/or repeated **`--partial-csv`**) → final long CSV, summary, tiered report, pivot (when comparing). |
+
+| Phase         | Role                                                                                                                             |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `**full`**    | End-to-end single batch (current default behaviour).                                                                             |
+| `**scatter**` | Per-shard raw metrics → `**calibration_compare.partial_metrics.csv**`; no summary/tiered report.                                 |
+| `**gather**`  | `**--partial-csv-list**` (and/or repeated `**--partial-csv**`) → final long CSV, summary, tiered report, pivot (when comparing). |
+
 
 ---
 
 ## Scatter–gather workflow inputs (summary)
 
-| Input | Type | Description |
-|-------|------|-------------|
-| `master_paths_setup_a` | `File` | Master text file: one `gs://` URI per line. |
-| `master_paths_setup_b` | `File?` | Second master list; required when `two_setups` is `true` (same line count as A). |
-| `two_setups` | `Boolean` | Paired two-setup comparison vs single batch. |
-| `n_shards` | `Int` | Requested shard count; effective shards = **`min(n_shards, N traits)`**. |
-| `n_jobs`, `memory_gb`, `lead_window_bp`, `cis_json`, `lead_variants_json`, `diagnostic_plots`, … | — | Same meaning as in the single-task workflow (see table below). |
-| `split_cpu`, `split_memory_mb` | `Int` | Resources for **`split_path_lists`**. |
-| `gather_cpu`, `gather_memory_gb` | `Int` | Resources for **`aggregate_and_score`** (CSV-only; small). |
-| `docker` | `String` | Container image URI (same as single-task workflow). |
+
+| Input                                                                                            | Type      | Description                                                                      |
+| ------------------------------------------------------------------------------------------------ | --------- | -------------------------------------------------------------------------------- |
+| `master_paths_setup_a`                                                                           | `File`    | Master text file: one `gs://` URI per line.                                      |
+| `master_paths_setup_b`                                                                           | `File?`   | Second master list; required when `two_setups` is `true` (same line count as A). |
+| `two_setups`                                                                                     | `Boolean` | Paired two-setup comparison vs single batch.                                     |
+| `n_shards`                                                                                       | `Int`     | Requested shard count; effective shards = `**min(n_shards, N traits)**`.         |
+| `n_jobs`, `memory_gb`, `lead_window_bp`, `cis_json`, `lead_variants_json`, `diagnostic_plots`, … | —         | Same meaning as in the single-task workflow (see table below).                   |
+| `split_cpu`, `split_memory_mb`                                                                   | `Int`     | Resources for `**split_path_lists**`.                                            |
+| `gather_cpu`, `gather_memory_gb`                                                                 | `Int`     | Resources for `**aggregate_and_score**` (CSV-only; small).                       |
+| `docker`                                                                                         | `String`  | Container image URI (same as single-task workflow).                              |
+
 
 ---
 
 ## Workflow inputs (summary) — single-task `gwas_calibration_qc.wdl`
 
 
-| Input                            | Type            | Description                                                                                               |
-| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
-| `paths_setup_a`                  | `File`          | Text file: one `gs://` URI per line (sumstats per trait).                                                 |
-| `two_setups`                     | `Boolean`       | `true` = compare two setups; `false` = single batch.                                                      |
-| `paths_setup_b`                  | `File?`         | Second path list; required when `two_setups` is `true`.                                                   |
-| `lead_variants_json`             | `File?`         | Optional fixed lead file. Omit to auto-generate under `results/` on the worker.                           |
-| `cis_json`                       | `File?`         | Optional cis masking specification.                                                                       |
-| `setup_label_a`, `setup_label_b` | `String`        | Human-readable setup names (second label unused when `two_setups` is `false`).                            |
-| `protein_id_mode`                | `String`        | How trait IDs are derived from filenames (`first_segment` or `stem`).                                     |
-| `n_jobs`, `memory_gb`            | `Int`           | Parallel worker count and worker RAM (gigabytes; formatted as `"{memory_gb} GB"` in the backend runtime). |
-| `diagnostic_plots`               | `Boolean`       | Emit per-trait diagnostic figures when dependencies are present in the image.                             |
-| `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality).                       |
+| Input                            | Type            | Description                                                                                                                                                           |
+| -------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paths_setup_a`                  | `File`          | Text file: one `gs://` URI per line (sumstats per trait).                                                                                                             |
+| `two_setups`                     | `Boolean`       | `true` = compare two setups; `false` = single batch.                                                                                                                  |
+| `paths_setup_b`                  | `File?`         | Second path list; required when `two_setups` is `true`.                                                                                                               |
+| `lead_variants_json`             | `File?`         | Optional fixed lead file. Omit to auto-generate under `results/` on the worker.                                                                                       |
+| `cis_json`                       | `File?`         | Optional cis masking specification.                                                                                                                                   |
+| `setup_label_a`, `setup_label_b` | `String`        | Human-readable setup names (second label unused when `two_setups` is `false`).                                                                                        |
+| `protein_id_mode`                | `String`        | How trait IDs are derived from filenames (`first_segment` or `stem`).                                                                                                 |
+| `n_jobs`, `memory_gb`            | `Int`           | Parallel worker count and worker RAM (gigabytes; formatted as `"{memory_gb} GB"` in the backend runtime).                                                             |
+| `diagnostic_plots`               | `Boolean`       | Emit per-trait diagnostic figures when dependencies are present in the image.                                                                                         |
+| `top_n_trans`, `probability_rho` | `Int` / `Float` | Analysis tuning (tail reporting depth; sigmoid sharpness for run-relative quality).                                                                                   |
 | `lead_window_bp`                 | `Int`           | Half-width in bp around each lead on the lead chromosome (default **1500000** → ±1.5 Mb, **3 Mb** total span). **0** disables lead masking while still loading leads. |
-| `gwaslab_mqq_plots`              | `Boolean`       | After calibration, run GWASlab **mqq** plots per localised sumstats file; outputs under `results/gwaslab_mqq/`. |
-| `gwaslab_mqq_n_jobs`             | `Int`           | Process pool size for mqq (default **2**; mqq is memory heavy). |
-| `gwaslab_mqq_build`              | `String`        | GWASlab genome build (default **`38`**, GRCh38). |
-| `gwaslab_mqq_extra_disk_gb`     | `Int`           | Added to the worker SSD budget when mqq is enabled. |
-| `docker`                         | `String`        | Full container image URI (including tag).                                                                 |
+| `gwaslab_mqq_plots`              | `Boolean`       | After calibration, run GWASlab **mqq** plots per localised sumstats file; outputs under `results/gwaslab_mqq/`.                                                       |
+| `gwaslab_mqq_n_jobs`             | `Int`           | Process pool size for mqq (default **2**; mqq is memory heavy).                                                                                                       |
+| `gwaslab_mqq_build`              | `String`        | GWASlab genome build (default `**38`**, GRCh38).                                                                                                                      |
+| `gwaslab_mqq_extra_disk_gb`      | `Int`           | Added to the worker SSD budget when mqq is enabled.                                                                                                                   |
+| `docker`                         | `String`        | Full container image URI (including tag).                                                                                                                             |
+
 
 ---
 
 ## Workflow outputs
 
-Cromwell materialises **declared output files** (and may copy them to a bucket if **`final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
+Cromwell materialises **declared output files** (and may copy them to a bucket if `**final_workflow_outputs_dir`** is set in workflow options). Typical artefacts:
 
 ### Single-task workflow (`gwas_calibration_qc.wdl`)
 
-| Artefact                                | Role                                                            |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `calibration_outputs.tgz`               | Archive of the entire `results/` tree.                          |
-| `calibration_compare.metrics.long.csv`  | Long-format metrics per trait (and setup, if comparing).        |
-| `calibration_compare.summary.json`      | Run-level summary.                                              |
-| `calibration_compare.tiered_report.txt` | Human-readable tiered KPI report.                               |
-| `gwas_calibration_qc.log`               | Execution log.                                                  |
-| `results/lead_variants.json`            | Present when leads were auto-generated or written to that path. |
+
+| Artefact                                | Role                                                                                               |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `calibration_outputs.tgz`               | Archive of the entire `results/` tree.                                                             |
+| `calibration_compare.metrics.long.csv`  | Long-format metrics per trait (and setup, if comparing).                                           |
+| `calibration_compare.summary.json`      | Run-level summary.                                                                                 |
+| `calibration_compare.tiered_report.txt` | Human-readable tiered KPI report.                                                                  |
+| `gwas_calibration_qc.log`               | Execution log.                                                                                     |
+| `results/lead_variants.json`            | Present when leads were auto-generated or written to that path.                                    |
 | `results/gwaslab_mqq/*_gwaslab_mqq.png` | **When** `gwaslab_mqq_plots` is **true**: one Manhattan + MAF-stratified QQ (mqq) panel per trait. |
+
 
 ### Scatter–gather workflow (`gwas_calibration_qc_scattered.wdl`)
 
-| Artefact | Role |
-|----------|------|
-| **`metrics_long_csv`**, **`summary_json`**, **`tiered_report_txt`**, **`pivot_csv`** | Same semantics as the single-task workflow (final batch-global scores). |
-| **`shard_partial_metrics_csv`** | `Array[File]`: one **`calibration_compare.partial_metrics.csv`** per shard. |
-| **`shard_logs`**, **`shard_plots_tgz`**, **`shard_lead_variants_json`** | Per-shard logs, **`results/`** tarballs, and optional **`lead_variants.json`** copies. |
-| **`gather_log`** | Log from the **`aggregate_and_score`** task. |
 
-With **`diagnostic_plots: true`**, each shard’s **`shard_plots_tgz`** contains that shard’s figures (QQ, tail-excess, etc.); there is **no** single combined tarball unless you merge outputs downstream.
+| Artefact                                                                             | Role                                                                                   |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `**metrics_long_csv`**, `**summary_json**`, `**tiered_report_txt**`, `**pivot_csv**` | Same semantics as the single-task workflow (final batch-global scores).                |
+| `**shard_partial_metrics_csv**`                                                      | `Array[File]`: one `**calibration_compare.partial_metrics.csv**` per shard.            |
+| `**shard_logs**`, `**shard_plots_tgz**`, `**shard_lead_variants_json**`              | Per-shard logs, `**results/**` tarballs, and optional `**lead_variants.json**` copies. |
+| `**gather_log**`                                                                     | Log from the `**aggregate_and_score**` task.                                           |
+
+
+With `**diagnostic_plots: true**`, each shard’s `**shard_plots_tgz**` contains that shard’s figures (QQ, tail-excess, etc.); there is **no** single combined tarball unless you merge outputs downstream.
 
 ---
 
 ## Building the container image
 
 The image is **self-contained**: the Python code it runs lives in the
-**`gwas_calibration_utils/`** git submodule (pinned at a specific tag) at the
+`**gwas_calibration_utils/`** git submodule (pinned at a specific tag) at the
 repository root. The Dockerfile COPYs that directory and `pip install`s it in
 src-layout (extras `[all]` pull the scientific stack, GWASlab, and
 intervaltree). Console entry points `gwas-calibration-qc` and
 `gwaslab-mqq-plots` are on `$PATH` after install.
 
 > **Clone with submodule:**
+>
 > ```bash
 > git clone --recurse-submodules https://github.com/RezaJF/GWAS_calibration_engine.git
 > # or after a plain clone:
@@ -384,16 +400,18 @@ private submodule remains private without any extra build-time credentials.
 
 ### Troubleshooting
 
-| Symptom | Likely cause |
-|---------|-------------|
-| `COPY gwas_calibration_utils` finds an empty directory | Submodule not initialised. Run `git submodule update --init --recursive`. |
-| `HTTPError 412: 'us' violates constraint` | Org policy restricts resource locations. Pass **`--region`** and **`--gcs-source-staging-dir`** pointing to a bucket in the allowed region. |
-| Image pull fails on Cromwell | Worker service account lacks Artifact Registry read permission, or URI/tag mismatch. |
+
+| Symptom                                                     | Likely cause                                                                                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `COPY gwas_calibration_utils` finds an empty directory      | Submodule not initialised. Run `git submodule update --init --recursive`.                                                                              |
+| `HTTPError 412: 'us' violates constraint`                   | Org policy restricts resource locations. Pass `**--region`** and `**--gcs-source-staging-dir**` pointing to a bucket in the allowed region.            |
+| Image pull fails on Cromwell                                | Worker service account lacks Artifact Registry read permission, or URI/tag mismatch.                                                                   |
 | `gwas-calibration-qc: command not found` inside a container | Image built from a pre-self-contained tag (≤ `:v3`) where the WDL still invoked scripts by absolute path. Use `:v4` or later for console entry points. |
+
 
 ### Smoke test
 
-After build, the image exposes the **`gwas-calibration-qc`** console entry point:
+After build, the image exposes the `**gwas-calibration-qc**` console entry point:
 
 ```bash
 docker run --rm LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG \
@@ -402,27 +420,27 @@ docker run --rm LOCATION-docker.pkg.dev/PROJECT/REGISTRY/gwas-calibration-qc:TAG
 
 Exit code **0** confirms the environment is wired correctly. If Docker is not available locally, verify via Cloud Build logs or by pulling the image on a different machine.
 
-Use the **same** URI (including tag) as **`gwas_calibration_qc.docker`** in your Cromwell inputs.
+Use the **same** URI (including tag) as `**gwas_calibration_qc.docker`** in your Cromwell inputs.
 
 ---
 
 ## Cromwell requirements
 
-The workflow uses **conditional calls** (`if` on `two_setups`) and **`select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
+The workflow uses **conditional calls** (`if` on `two_setups`) and `**select_first`** over task outputs. Use a **recent Cromwell** (e.g. 50+ or your platform’s supported release) so optional outputs from branches resolve correctly.
 
 Default runtime hints target **preemptible** VMs in **europe-west1** with **no public egress** from the worker (`noAddress: true`), matching common secure batch-QC deployments; adjust zones and flags to match your organisation’s policy.
 
 ### Optional `File?` inputs and path localisation
 
-**`cis_json`** and optional **`lead_variants_json`** are **`File?`** workflow inputs. The WDL builds `--cis-json …` and `--lead-variants-json …` flags using **`~{…}`** interpolation **inside** the task `command` block, so Cromwell substitutes **localised disk paths** after download. Do **not** pre-compose those paths as `String` values in the task declaration section by concatenating a `File?` into a string: that can freeze the original **`gs://`** URI in the rendered script and cause the worker to fail when the engine expects a readable local file.
+`**cis_json`** and optional `**lead_variants_json**` are `**File?**` workflow inputs. The WDL builds `--cis-json …` and `--lead-variants-json …` flags using `**~{…}**` interpolation **inside** the task `command` block, so Cromwell substitutes **localised disk paths** after download. Do **not** pre-compose those paths as `String` values in the task declaration section by concatenating a `File?` into a string: that can freeze the original `**gs://`** URI in the rendered script and cause the worker to fail when the engine expects a readable local file.
 
 ### `lead_window_bp` and the container image
 
-The workflow passes **`--lead-window-bp ~{lead_window_bp}`** explicitly (default **1500000**). That keeps masking behaviour aligned with this repository even if an older image still carried a different Python default. To change the window, set **`gwas_calibration_qc.lead_window_bp`** in Cromwell inputs (use **0** to load leads but disable lead-window masking). Rebuild and push the image when you need an updated **gwas-calibration-utils** implementation inside the container.
+The workflow passes `**--lead-window-bp ~{lead_window_bp}**` explicitly (default **1500000**). That keeps masking behaviour aligned with this repository even if an older image still carried a different Python default. To change the window, set `**gwas_calibration_qc.lead_window_bp`** in Cromwell inputs (use **0** to load leads but disable lead-window masking). Rebuild and push the image when you need an updated **gwas-calibration-utils** implementation inside the container.
 
 ### Workflow options and Google labels
 
-Some Cromwell clients require **`google_labels`** (including **`product`**) in the **workflow options** JSON. If your tool treats **`--options`** and **`--l`** as mutually exclusive, add a **`google_labels`** object to the same JSON you pass as **`--options`** (see your platform’s submission examples).
+Some Cromwell clients require `**google_labels`** (including `**product**`) in the **workflow options** JSON. If your tool treats `**--options`** and `**--l**` as mutually exclusive, add a `**google_labels**` object to the same JSON you pass as `**--options**` (see your platform’s submission examples).
 
 ---
 
@@ -434,8 +452,139 @@ Some Cromwell clients require **`google_labels`** (including **`product`**) in t
 ---
 
 ## Licence
-- **This repository** (WDL, Docker build files, scripts under `scripts/`, and this README):
-  **Copyright © 2026 Reza Jabal, PhD. All rights reserved.**
-  Licensed under the **[PolyForm Noncommercial Licence 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/)** — see **`LICENSE`** for the full text.
-  You may use, copy, modify, and redistribute this work **for non-commercial purposes only**, provided that clear attribution to **Reza Jabal, PhD** is retained in all copies and derivative works. **Commercial use of any kind requires prior written permission from the copyright holder.**
-- **gwas-calibration-utils** (installed from source into the image; Reza Jabal, PhD is the copyright holder): distributed under its own **MIT** licence and copyright notice. That notice is **not** altered or superseded by the licence above; retain it when redistributing source or images that bundle the package.
+
+
+Copyright © 2026 Reza Jabal, PhD. All rights reserved.
+
+1. DEFINITIONS
+   1.1 "The Work" means the contents of this repository covered by this
+       Licence, including but not limited to the WDL workflow files, Docker
+       build files, scripts under `scripts/`, the README, and any other
+       files in this repository for which Reza Jabal, PhD is the copyright
+       holder. The Work does NOT include third-party components that
+       carry their own copyright notice and licence (for example,
+       `gwas-calibration-utils`, which is distributed under the MIT
+       Licence and remains governed by its own notice).
+   1.2 "Licensor" means Reza Jabal, PhD, the copyright holder of the Work.
+   1.3 "You" means any individual or legal entity exercising rights under
+       this Licence.
+   1.4 "Non-Commercial Use" means use of the Work that is not primarily
+       intended for or directed toward commercial advantage or monetary
+       compensation. Permitted Non-Commercial Use includes personal use,
+       academic research, classroom teaching, and use by registered
+       non-profit organisations in furtherance of their non-profit
+       mission.
+   1.5 "Commercial Use" means any use of the Work that is not
+       Non-Commercial Use. Commercial Use includes, without limitation:
+       (a) use by, for, or on behalf of a for-profit entity in the
+           course of its business, including internal research and
+           development;
+       (b) use to provide paid services, including consulting,
+           contract research, clinical services, or software-as-a-service
+           offerings;
+       (c) inclusion of the Work, in whole or in part, in a product or
+           service that is sold, licensed, or otherwise monetised;
+       (d) use in connection with grant-funded work whose results are
+           intended to be commercialised, patented for commercial
+           exploitation, or transferred to a for-profit entity;
+       (e) use to generate data, models, or analyses that are sold or
+           licensed to third parties.
+
+2. GRANT OF LICENCE
+   Subject to Your full compliance with the terms and conditions of this
+   Licence, the Licensor grants You a worldwide, royalty-free,
+   non-exclusive, non-transferable, non-sublicensable, revocable licence
+   to reproduce, run, modify, and redistribute the Work, in source or
+   compiled form (including as part of a container image), solely for
+   Non-Commercial Use.
+
+3. CONDITIONS
+   The licence in Section 2 is conditional on ALL of the following:
+   3.1 ATTRIBUTION. You must retain, in all copies, modifications, and
+       derivative works of the Work, the following: (a) the copyright
+       notice "Copyright © 2026 Reza Jabal, PhD. All rights reserved.";
+       (b) a verbatim copy of this Licence; and (c) a clear, visible
+       reference to Reza Jabal, PhD as the original author. In any
+       publication, presentation, report, or public communication that
+       presents results obtained using the Work, You must cite Reza
+       Jabal, PhD as the author of the Work.
+   3.2 NOTICE OF MODIFICATION. If You modify the Work, You must mark
+       Your modifications clearly and state that the modified files
+       have been changed from the original.
+   3.3 NO REMOVAL. You must not remove, obscure, or alter any copyright,
+       patent, trademark, attribution, or licence notices contained in
+       the Work, including the third-party MIT notice for
+       `gwas-calibration-utils`.
+   3.4 NO SUBLICENSING. You may not sublicense the Work. Each recipient
+       of the Work or any derivative receives their rights directly
+       from the Licensor under this Licence.
+   3.5 NO ADDITIONAL RESTRICTIONS. You may not impose any additional
+       legal terms or technological measures on recipients that
+       restrict the exercise of the rights granted under this Licence.
+
+4. PROHIBITION ON COMMERCIAL USE
+   4.1 Commercial Use of the Work, in whole or in part, is expressly
+       PROHIBITED without the prior written permission of the Licensor.
+   4.2 Permission for Commercial Use, if granted, will be set out in a
+       separate written agreement signed by the Licensor and may be
+       subject to fees, royalties, and additional terms.
+   4.3 To request permission for Commercial Use, contact:
+       Reza Jabal, PhD — please open an issue in this repository
+       requesting contact details, or use the contact information
+       provided in the repository README.
+
+5. RESERVATION OF RIGHTS
+   All rights not expressly granted by this Licence are reserved by the
+   Licensor. No rights are granted by implication, estoppel, or
+   otherwise. No patent licence is granted under this Licence.
+
+6. THIRD-PARTY COMPONENTS
+   The Work depends on, bundles, or is distributed alongside third-party
+   components, including but not limited to `gwas-calibration-utils`,
+   which are governed by their own copyright notices and licences (the
+   MIT Licence in the case of `gwas-calibration-utils`). Nothing in this
+   Licence modifies, supersedes, or extinguishes the rights or
+   obligations under those third-party licences. You must comply with
+   them in addition to this Licence and must retain their notices when
+   redistributing source or container images that include them.
+
+7. TERMINATION
+   7.1 This Licence and the rights granted under it terminate
+       automatically and immediately if You breach any of its terms.
+   7.2 Upon termination, You must cease all use of the Work and destroy
+       all copies in Your possession or control, except that copies
+       lawfully distributed to third parties prior to termination may
+       remain with those third parties subject to this Licence.
+   7.3 Sections 5, 6, 8, 9, and 10 survive termination.
+
+8. NO WARRANTY
+   THE WORK IS PROVIDED "AS IS" AND "AS AVAILABLE", WITHOUT WARRANTY
+   OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+   WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+   TITLE, AND NON-INFRINGEMENT. THE LICENSOR DOES NOT WARRANT THAT THE
+   WORK WILL BE ERROR-FREE, ACCURATE, OR SUITABLE FOR ANY CLINICAL,
+   DIAGNOSTIC, OR OTHER REGULATED USE. THE WORK IS NOT A MEDICAL
+   DEVICE.
+
+9. LIMITATION OF LIABILITY
+   TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL
+   THE LICENSOR BE LIABLE TO YOU OR ANY THIRD PARTY ON ANY LEGAL THEORY
+   (INCLUDING, WITHOUT LIMITATION, NEGLIGENCE) FOR ANY DIRECT, INDIRECT,
+   INCIDENTAL, CONSEQUENTIAL, PUNITIVE, EXEMPLARY, OR SPECIAL DAMAGES,
+   OR FOR ANY LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE
+   LOSSES, ARISING OUT OF OR IN CONNECTION WITH THIS LICENCE OR THE USE
+   OF, OR INABILITY TO USE, THE WORK, EVEN IF THE LICENSOR HAS BEEN
+   ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+10. GENERAL
+    10.1 If any provision of this Licence is held to be unenforceable,
+         that provision shall be reformed only to the extent necessary
+         to make it enforceable, and the remaining provisions shall
+         remain in full force and effect.
+    10.2 Failure by the Licensor to enforce any provision of this
+         Licence shall not be a waiver of future enforcement of that
+         or any other provision.
+    10.3 This Licence constitutes the entire agreement between You and
+         the Licensor with respect to the Work and supersedes any prior
+         understandings or agreements regarding the Work.
+
